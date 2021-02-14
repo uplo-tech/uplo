@@ -1,0 +1,761 @@
+package types
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"math/big"
+	"strings"
+	"testing"
+
+	"github.com/uplo-tech/errors"
+	"github.com/uplo-tech/fastrand"
+
+	"github.com/uplo-tech/uplo/crypto"
+	"github.com/uplo-tech/encoding"
+)
+
+func hashStr(v interface{}) string {
+	h := crypto.HashObject(v)
+	return fmt.Sprintf("%x", h[:])
+}
+
+// heavyBlock is a complex block that fills every possible field with data.
+var heavyBlock = func() Block {
+	b := Block{
+		MinerPayouts: []UplocoinOutput{
+			{Value: CalculateCoinbase(0)},
+			{Value: CalculateCoinbase(1)},
+		},
+		Transactions: []Transaction{
+			{
+				UplocoinInputs: []UplocoinInput{{
+					UnlockConditions: UnlockConditions{
+						PublicKeys: []UploPublicKey{{
+							Algorithm: SignatureEd25519,
+							Key:       fastrand.Bytes(32),
+						}},
+						SignaturesRequired: 6,
+					},
+				}},
+				UplocoinOutputs: []UplocoinOutput{{
+					Value: NewCurrency64(20),
+				}},
+				FileContracts: []FileContract{{
+					FileSize:       12,
+					Payout:         NewCurrency64(100),
+					RevisionNumber: 8,
+					ValidProofOutputs: []UplocoinOutput{{
+						Value: NewCurrency64(2),
+					}},
+					MissedProofOutputs: []UplocoinOutput{{
+						Value: NewCurrency64(3),
+					}},
+				}},
+				FileContractRevisions: []FileContractRevision{{
+					NewFileSize:       13,
+					NewRevisionNumber: 9,
+					UnlockConditions: UnlockConditions{
+						PublicKeys: []UploPublicKey{{
+							Algorithm: SignatureEd25519,
+							Key:       fastrand.Bytes(32),
+						}},
+					},
+					NewValidProofOutputs: []UplocoinOutput{{
+						Value: NewCurrency64(4),
+					}},
+					NewMissedProofOutputs: []UplocoinOutput{{
+						Value: NewCurrency64(5),
+					}},
+				}},
+				StorageProofs: []StorageProof{{
+					HashSet: []crypto.Hash{{}},
+				}},
+				UplofundInputs: []UplofundInput{{
+					UnlockConditions: UnlockConditions{
+						PublicKeys: []UploPublicKey{{
+							Algorithm: SignatureEd25519,
+							Key:       fastrand.Bytes(32),
+						}},
+					},
+				}},
+				UplofundOutputs: []UplofundOutput{{
+					ClaimStart: NewCurrency64(99),
+					Value:      NewCurrency64(25),
+				}},
+				MinerFees:     []Currency{NewCurrency64(215)},
+				ArbitraryData: [][]byte{fastrand.Bytes(10)},
+				TransactionSignatures: []TransactionSignature{{
+					PublicKeyIndex: 5,
+					Timelock:       80,
+					CoveredFields: CoveredFields{
+						WholeTransaction:      true,
+						UplocoinInputs:         []uint64{0},
+						UplocoinOutputs:        []uint64{1},
+						FileContracts:         []uint64{2},
+						FileContractRevisions: []uint64{3},
+						StorageProofs:         []uint64{4},
+						UplofundInputs:         []uint64{5},
+						UplofundOutputs:        []uint64{6},
+						MinerFees:             []uint64{7},
+						ArbitraryData:         []uint64{8},
+						TransactionSignatures: []uint64{9},
+					},
+					Signature: fastrand.Bytes(32),
+				}},
+			},
+		},
+	}
+	fastrand.Read(b.Transactions[0].UplocoinInputs[0].ParentID[:])
+	fastrand.Read(b.Transactions[0].UplocoinOutputs[0].UnlockHash[:])
+	fastrand.Read(b.Transactions[0].FileContracts[0].FileMerkleRoot[:])
+	fastrand.Read(b.Transactions[0].FileContracts[0].ValidProofOutputs[0].UnlockHash[:])
+	fastrand.Read(b.Transactions[0].FileContracts[0].MissedProofOutputs[0].UnlockHash[:])
+	fastrand.Read(b.Transactions[0].FileContractRevisions[0].ParentID[:])
+	fastrand.Read(b.Transactions[0].FileContractRevisions[0].NewFileMerkleRoot[:])
+	fastrand.Read(b.Transactions[0].FileContractRevisions[0].NewValidProofOutputs[0].UnlockHash[:])
+	fastrand.Read(b.Transactions[0].FileContractRevisions[0].NewMissedProofOutputs[0].UnlockHash[:])
+	fastrand.Read(b.Transactions[0].StorageProofs[0].ParentID[:])
+	fastrand.Read(b.Transactions[0].StorageProofs[0].HashSet[0][:])
+	fastrand.Read(b.Transactions[0].StorageProofs[0].Segment[:])
+	fastrand.Read(b.Transactions[0].UplofundInputs[0].ParentID[:])
+	fastrand.Read(b.Transactions[0].UplofundInputs[0].ClaimUnlockHash[:])
+	fastrand.Read(b.Transactions[0].UplofundOutputs[0].UnlockHash[:])
+	fastrand.Read(b.Transactions[0].TransactionSignatures[0].ParentID[:])
+	return b
+}()
+
+// TestBlockEncodes probes the MarshalUplo and UnmarshalUplo methods of the
+// Block type.
+func TestBlockEncoding(t *testing.T) {
+	var decB Block
+	err := encoding.Unmarshal(encoding.Marshal(heavyBlock), &decB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hashStr(heavyBlock) != hashStr(decB) {
+		t.Fatal("block changed after encode/decode:", heavyBlock, decB)
+	}
+}
+
+// TestBadBlock tests that a known invalid encoding is not successfully
+// decoded.
+func TestBadBlock(t *testing.T) {
+	badData := "000000000000000000000000000000000000000000000000\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+	var block Block
+	err := encoding.Unmarshal([]byte(badData), &block)
+	if err == nil {
+		t.Fatal("invalid block decoded successfully")
+	}
+}
+
+// TestCurrencyMarshalJSON probes the MarshalJSON and UnmarshalJSON functions
+// of the currency type.
+func TestCurrencyMarshalJSON(t *testing.T) {
+	b30 := big.NewInt(30)
+	c30 := NewCurrency64(30)
+
+	bMar30, err := b30.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cMar30, err := c30.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(bMar30, bytes.Trim(cMar30, `"`)) {
+		t.Error("Currency does not match the marshalling of its math/big equivalent")
+	}
+
+	var cUmar30 Currency
+	err = cUmar30.UnmarshalJSON(cMar30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c30.Cmp(cUmar30) != 0 {
+		t.Error("Incorrect unmarshalling of currency type.")
+	}
+
+	cMar30[0] = 0
+	err = cUmar30.UnmarshalJSON(cMar30)
+	if err == nil {
+		t.Error("JSON decoded nonsense input")
+	}
+}
+
+// TestCurrencyMarshalUplo probes the MarshalUplo and UnmarshalUplo functions of
+// the currency type.
+func TestCurrencyMarshalUplo(t *testing.T) {
+	c := NewCurrency64(1656)
+	buf := new(bytes.Buffer)
+	err := c.MarshalUplo(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cUmar Currency
+	cUmar.UnmarshalUplo(buf)
+	if c.Cmp(cUmar) != 0 {
+		t.Error("marshal and unmarshal mismatch for currency type")
+	}
+}
+
+// TestCurrencyString probes the String function of the currency type.
+func TestCurrencyString(t *testing.T) {
+	b := big.NewInt(7135)
+	c := NewCurrency64(7135)
+	if b.String() != c.String() {
+		t.Error("string function not behaving as expected")
+	}
+}
+
+// TestCurrencyScan probes the Scan function of the currency type.
+func TestCurrencyScan(t *testing.T) {
+	var c0 Currency
+	c1 := NewCurrency64(81293)
+	_, err := fmt.Sscan("81293", &c0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c0.Cmp(c1) != 0 {
+		t.Error("scanned number does not equal expected value")
+	}
+	_, err = fmt.Sscan("z", &c0)
+	if err == nil {
+		t.Fatal("scan is accepting garbage input")
+	}
+}
+
+// TestCurrencyEncoding checks that a currency can encode and decode without
+// error.
+func TestCurrencyEncoding(t *testing.T) {
+	c := NewCurrency64(351)
+	cMar := encoding.Marshal(c)
+	var cUmar Currency
+	err := encoding.Unmarshal(cMar, &cUmar)
+	if err != nil {
+		t.Error("Error unmarshalling a currency:", err)
+	}
+	if cUmar.Cmp(c) != 0 {
+		t.Error("Marshalling and Unmarshalling a currency did not work correctly")
+	}
+}
+
+// TestNegativeCurrencyUnmarshalJSON tries to unmarshal a negative number from
+// JSON.
+func TestNegativeCurrencyUnmarshalJSON(t *testing.T) {
+	// Marshal a 2 digit number.
+	c := NewCurrency64(35)
+	cMar, err := c.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Change the first digit to a negative character.
+	cMar[0] = 45
+
+	// Try unmarshalling the negative currency.
+	var cNeg Currency
+	err = cNeg.UnmarshalJSON(cMar)
+	if !errors.Contains(err, ErrNegativeCurrency) {
+		t.Error("expecting ErrNegativeCurrency:", err)
+	}
+	if cNeg.i.Sign() < 0 {
+		t.Error("negative currency returned")
+	}
+}
+
+// TestNegativeCurrencyScan tries to scan in a negative number and checks for
+// an error.
+func TestNegativeCurrencyScan(t *testing.T) {
+	var c Currency
+	_, err := fmt.Sscan("-23", &c)
+	if !errors.Contains(err, ErrNegativeCurrency) {
+		t.Error("expecting ErrNegativeCurrency:", err)
+	}
+}
+
+// TestCurrencyUnsafeDecode tests that decoding into an existing Currency
+// value does not overwrite its contents.
+func TestCurrencyUnsafeDecode(t *testing.T) {
+	// Scan
+	backup := UplocoinPrecision.Mul64(1)
+	c := UplocoinPrecision
+	_, err := fmt.Sscan("7", &c)
+	if err != nil {
+		t.Error(err)
+	} else if !UplocoinPrecision.Equals(backup) {
+		t.Errorf("Scan changed value of UplocoinPrecision: %v -> %v", backup, UplocoinPrecision)
+	}
+
+	// UnmarshalUplo
+	c = UplocoinPrecision
+	err = encoding.Unmarshal(encoding.Marshal(NewCurrency64(7)), &c)
+	if err != nil {
+		t.Error(err)
+	} else if !UplocoinPrecision.Equals(backup) {
+		t.Errorf("UnmarshalUplo changed value of UplocoinPrecision: %v -> %v", backup, UplocoinPrecision)
+	}
+}
+
+// TestTransactionEncoding tests that optimizations applied to the encoding of
+// the Transaction type do not change its encoding.
+func TestTransactionEncoding(t *testing.T) {
+	var txn Transaction
+	if h := hashStr(txn); h != "143aa0da2b6a4ca39eee3ee50a6536d75eedff3b5ef0229a6d603afa7854d5b8" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	txn = Transaction{
+		UplocoinInputs:         []UplocoinInput{{}},
+		UplocoinOutputs:        []UplocoinOutput{{}},
+		FileContracts:         []FileContract{{}},
+		FileContractRevisions: []FileContractRevision{{}},
+		StorageProofs:         []StorageProof{{}},
+		UplofundInputs:         []UplofundInput{{}},
+		UplofundOutputs:        []UplofundOutput{{}},
+		MinerFees:             []Currency{{}},
+		ArbitraryData:         [][]byte{{}},
+		TransactionSignatures: []TransactionSignature{{}},
+	}
+	if h := hashStr(txn); h != "a6c0f41cb89aaede0682ab06c1e757e12d662a0156ec878f85b935bc219fb3ca" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUplocoinInputEncoding tests that optimizations applied to the encoding
+// of the UplocoinInput type do not change its encoding.
+func TestUplocoinInputEncoding(t *testing.T) {
+	var sci UplocoinInput
+	if h := hashStr(sci); h != "2f806f905436dc7c5079ad8062467266e225d8110a3c58d17628d609cb1c99d0" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	sci = UplocoinInput{
+		ParentID:         UplocoinOutputID{1, 2, 3},
+		UnlockConditions: UnlockConditions{},
+	}
+	if h := hashStr(sci); h != "f172a8f5892bb2b63eff32de6fd83c132be5ad134d1227d8881632bd809ae075" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUplocoinOutputEncoding tests that optimizations applied to the encoding
+// of the UplocoinOutput type do not change its encoding.
+func TestUplocoinOutputEncoding(t *testing.T) {
+	var sco UplocoinOutput
+	if h := hashStr(sco); h != "4a1931803561f431decab002e7425f0a8531d5e456a1a47fd9998a2530c0f800" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	sco = UplocoinOutput{
+		Value:      NewCurrency64(0),
+		UnlockHash: UnlockHash{1, 2, 3},
+	}
+	if h := hashStr(sco); h != "32fb94ae64201f3e0a373947382367666bcf205d47a58ece9260c459986ae6fd" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUplofundInputEncoding tests that optimizations applied to the encoding
+// of the UplofundInput type do not change its encoding.
+func TestUplofundInputEncoding(t *testing.T) {
+	var sci UplofundInput
+	if h := hashStr(sci); h != "978a948b1a92bcddcea382bafc7718a25f8cc49b8fb11db5d9159afa960cf70a" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	sci = UplofundInput{
+		ParentID:         UplofundOutputID{1, 2, 3},
+		UnlockConditions: UnlockConditions{1, nil, 3},
+		ClaimUnlockHash:  UnlockHash{1, 2, 3},
+	}
+	if h := hashStr(sci); h != "1a6781ca002262e1def98e294f86dd81f866e2db9029954c64a36d20d0c6b46f" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUplofundOutputEncoding tests that optimizations applied to the encoding
+// of the UplofundOutput type do not change its encoding.
+func TestUplofundOutputEncoding(t *testing.T) {
+	var sco UplofundOutput
+	if h := hashStr(sco); h != "df69a516de12056d0895fdea7a0274c5aba67091543238670513104c1af69c1f" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	sco = UplofundOutput{
+		Value:      NewCurrency64(0),
+		UnlockHash: UnlockHash{1, 2, 3},
+		ClaimStart: NewCurrency64(4),
+	}
+	if h := hashStr(sco); h != "9524d2250b21adc76967e9f86d26a68982727329e5c42a6bf5e62504891a5176" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestCoveredFieldsEncoding tests that optimizations applied to the encoding
+// of the CoveredFields type do not change its encoding.
+func TestCoveredFieldsEncoding(t *testing.T) {
+	var cf CoveredFields
+	if h := hashStr(cf); h != "aecfdceb8b630b5b00668d229221f876b3be1630703c4615a642db2c666b4fd7" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	cf = CoveredFields{
+		WholeTransaction:      true,
+		UplocoinInputs:         []uint64{0},
+		UplocoinOutputs:        []uint64{1},
+		FileContracts:         []uint64{2},
+		FileContractRevisions: []uint64{3},
+		StorageProofs:         []uint64{4},
+		UplofundInputs:         []uint64{5},
+		UplofundOutputs:        []uint64{6},
+		MinerFees:             []uint64{7},
+		ArbitraryData:         []uint64{8},
+		TransactionSignatures: []uint64{9, 10},
+	}
+	if h := hashStr(cf); h != "5b10cd6b50b09447aae02829643e62b513ce99b969a80aeb620f74e77ca9bbba" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUploPublicKeyEncoding tests that optimizations applied to the encoding
+// of the UploPublicKey type do not change its encoding.
+func TestUploPublicKeyEncoding(t *testing.T) {
+	var spk UploPublicKey
+	if h := hashStr(spk); h != "19ea4a516c66775ea1f648d71f6b8fa227e8b0c1a0c9203f82c33b89c4e759b5" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	spk = UploPublicKey{
+		Algorithm: Specifier{1, 2, 3},
+		Key:       []byte{4, 5, 6},
+	}
+	if h := hashStr(spk); h != "9c781bbeebc23a1885d00e778c358f0a4bc81a82b48191449129752a380adc03" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUploPublicKeyLoadString checks that the LoadString method is the proper
+// inverse of the String() method, also checks that there are no stupid panics
+// or severe errors.
+func TestUploPublicKeyLoadString(t *testing.T) {
+	spk := UploPublicKey{
+		Algorithm: SignatureEd25519,
+		Key:       fastrand.Bytes(32),
+	}
+
+	spkString := spk.String()
+	var loadedSPK UploPublicKey
+	if err := loadedSPK.LoadString(spkString); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(loadedSPK.Algorithm[:], spk.Algorithm[:]) {
+		t.Error("UploPublicKey is not loading correctly")
+	}
+	if !loadedSPK.Equals(spk) {
+		t.Log(loadedSPK.Key, spk.Key)
+		t.Error("UploPublicKey is not loading correctly")
+	}
+
+	// Try loading crappy strings.
+	parts := strings.Split(spkString, ":")
+	if err := spk.LoadString(parts[0]); err == nil {
+		t.Fatal("should have failed")
+	}
+	if err := spk.LoadString(parts[0][1:]); err == nil {
+		t.Fatal("should have failed")
+	}
+	if err := spk.LoadString(parts[0][:1]); err == nil {
+		t.Fatal("should have failed")
+	}
+	if err := spk.LoadString(parts[1]); err == nil {
+		t.Fatal("should have failed")
+	}
+	if err := spk.LoadString(parts[1][1:]); err == nil {
+		t.Fatal("should have failed")
+	}
+	if err := spk.LoadString(parts[1][:1]); err == nil {
+		t.Fatal("should have failed")
+	}
+	if err := spk.LoadString(parts[0] + parts[1]); err == nil {
+		t.Fatal("should have failed")
+	}
+}
+
+// TestUploPublicKeyString does a quick check to verify that the String method
+// on the UploPublicKey is producing the expected output.
+func TestUploPublicKeyString(t *testing.T) {
+	spk := UploPublicKey{
+		Algorithm: SignatureEd25519,
+		Key:       make([]byte, 32),
+	}
+
+	if spk.String() != "ed25519:0000000000000000000000000000000000000000000000000000000000000000" {
+		t.Error("got wrong value for spk.String():", spk.String())
+	}
+}
+
+// TestUploPublicKeyShortString does a quick check to verify that the ShortString
+// method on the UploPublicKey is producing the expected output.
+func TestUploPublicKeyShortString(t *testing.T) {
+	var spk UploPublicKey
+	if spk.ShortString() != "" {
+		t.Fatal("expected empty string as result of ShortString for unitialised key")
+	}
+	err := json.Unmarshal([]byte(`{ "algorithm": "ed25519", "key": "5GhilFqVBKtSCedCZc6TIthzxvyBH9gPqqf+Z9hsfBo=" }`), &spk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if spk.ShortString() != "e46862945a9504ab5209e74265ce9322" {
+		t.Fatal("got wrong value for spk.ShortString():", spk.ShortString(), spk.String())
+	}
+}
+
+// TestUploPublicKeyUnmarshalJSON checks that UnmarshalJSON supports both
+// encodings of UploPublicKey.
+func TestUploPublicKeyUnmarshalJSON(t *testing.T) {
+	js1 := `{ "algorithm": "ed25519", "key": "5GhilFqVBKtSCedCZc6TIthzxvyBH9gPqqf+Z9hsfBo=" }`
+	var spk1 UploPublicKey
+	if err := json.Unmarshal([]byte(js1), &spk1); err != nil {
+		t.Error(err)
+	}
+
+	js2 := `"ed25519:e46862945a9504ab5209e74265ce9322d873c6fc811fd80faaa7fe67d86c7c1a"`
+	var spk2 UploPublicKey
+	var _ json.Unmarshaler = &spk2
+	if err := json.Unmarshal([]byte(js2), &spk2); err != nil {
+		t.Fatal(err)
+	}
+
+	if !spk1.Equals(spk2) {
+		t.Error("unmarshalled keys do not match")
+	}
+}
+
+// TestSpecifierMarshaling tests the marshaling methods of the specifier
+// type.
+func TestSpecifierMarshaling(t *testing.T) {
+	s1 := SpecifierClaimOutput
+	b, err := json.Marshal(s1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var s2 Specifier
+	err = json.Unmarshal(b, &s2)
+	if err != nil {
+		t.Fatal(err)
+	} else if s2 != s1 {
+		t.Fatal("mismatch:", s1, s2)
+	}
+
+	// invalid json
+	x := 3
+	b, _ = json.Marshal(x)
+	err = json.Unmarshal(b, &s2)
+	if err == nil {
+		t.Fatal("Unmarshal should have failed")
+	}
+}
+
+// TestTransactionSignatureEncoding tests that optimizations applied to the
+// encoding of the TransactionSignature type do not change its encoding.
+func TestTransactionSignatureEncoding(t *testing.T) {
+	var ts TransactionSignature
+	if h := hashStr(ts); h != "5801097b0ae98fe7cedd4569afc11c0a433f284681ad4d66dd7181293f6d2bba" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	ts = TransactionSignature{
+		ParentID:       crypto.Hash{1, 2, 3},
+		PublicKeyIndex: 4,
+		Timelock:       5,
+		CoveredFields:  CoveredFields{},
+		Signature:      []byte{6, 7, 8},
+	}
+	if h := hashStr(ts); h != "a3ce36fd8e1d6b7e5b030cdc2630d24a44472072bbd06e94d32d11132d817db0" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUnlockConditionsEncoding tests that optimizations applied to the
+// encoding of the UnlockConditions type do not change its encoding.
+func TestUnlockConditionsEncoding(t *testing.T) {
+	var uc UnlockConditions
+	if h := hashStr(uc); h != "19ea4a516c66775ea1f648d71f6b8fa227e8b0c1a0c9203f82c33b89c4e759b5" {
+		t.Error("encoding mismatch:", h)
+	}
+
+	uc = UnlockConditions{
+		Timelock:           1,
+		PublicKeys:         []UploPublicKey{{}},
+		SignaturesRequired: 3,
+	}
+	if h := hashStr(uc); h != "164d3741bd274d5333ab1fe8ab641b9d25cb0e0bed8e1d7bc466b5fffc956d96" {
+		t.Error("encoding mismatch:", h)
+	}
+}
+
+// TestUnlockHashJSONMarshalling checks that when an unlock hash is marshalled
+// and unmarshalled using JSON, the result is what is expected.
+func TestUnlockHashJSONMarshalling(t *testing.T) {
+	// Create an unlock hash.
+	uc := UnlockConditions{
+		Timelock:           5,
+		SignaturesRequired: 3,
+	}
+	uh := uc.UnlockHash()
+
+	// Marshal the unlock hash.
+	marUH, err := json.Marshal(uh)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Unmarshal the unlock hash and compare to the original.
+	var umarUH UnlockHash
+	err = json.Unmarshal(marUH, &umarUH)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if umarUH != uh {
+		t.Error("Marshalled and unmarshalled unlock hash are not equivalent")
+	}
+
+	// Corrupt the checksum.
+	marUH[36]++
+	err = umarUH.UnmarshalJSON(marUH)
+	if !errors.Contains(err, ErrInvalidUnlockHashChecksum) {
+		t.Error("expecting an invalid checksum:", err)
+	}
+	marUH[36]--
+
+	// Try an input that's not correct hex.
+	marUH[7] += 100
+	err = umarUH.UnmarshalJSON(marUH)
+	if err == nil {
+		t.Error("Expecting error after corrupting input")
+	}
+	marUH[7] -= 100
+
+	// Try an input of the wrong length.
+	err = (&umarUH).UnmarshalJSON(marUH[2:])
+	if !errors.Contains(err, ErrUnlockHashWrongLen) {
+		t.Error("Got wrong error:", err)
+	}
+}
+
+// TestUnlockHashStringMarshalling checks that when an unlock hash is
+// marshalled and unmarshalled using String and LoadString, the result is what
+// is expected.
+func TestUnlockHashStringMarshalling(t *testing.T) {
+	// Create an unlock hash.
+	uc := UnlockConditions{
+		Timelock:           2,
+		SignaturesRequired: 7,
+	}
+	uh := uc.UnlockHash()
+
+	// Marshal the unlock hash.
+	marUH := uh.String()
+
+	// Unmarshal the unlock hash and compare to the original.
+	var umarUH UnlockHash
+	err := umarUH.LoadString(marUH)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if umarUH != uh {
+		t.Error("Marshalled and unmarshalled unlock hash are not equivalent")
+	}
+
+	// Corrupt the checksum.
+	byteMarUH := []byte(marUH)
+	byteMarUH[36]++
+	err = umarUH.LoadString(string(byteMarUH))
+	if !errors.Contains(err, ErrInvalidUnlockHashChecksum) {
+		t.Error("expecting an invalid checksum:", err)
+	}
+	byteMarUH[36]--
+
+	// Try an input that's not correct hex.
+	byteMarUH[7] += 100
+	err = umarUH.LoadString(string(byteMarUH))
+	if err == nil {
+		t.Error("Expecting error after corrupting input")
+	}
+	byteMarUH[7] -= 100
+
+	// Try an input of the wrong length.
+	err = umarUH.LoadString(string(byteMarUH[2:]))
+	if !errors.Contains(err, ErrUnlockHashWrongLen) {
+		t.Error("Got wrong error:", err)
+	}
+}
+
+// TestCurrencyHumanString checks that the HumanString method of the currency
+// type is correctly formatting values.
+func TestCurrencyUnits(t *testing.T) {
+	tests := []struct {
+		in  Currency
+		out string
+	}{
+		{NewCurrency64(1), "1 H"},
+		{NewCurrency64(1000), "1000 H"},
+		{NewCurrency64(100000000000), "100000000000 H"},
+		{NewCurrency64(1000000000000), "1 pS"},
+		{NewCurrency64(1234560000000), "1.235 pS"},
+		{NewCurrency64(12345600000000), "12.35 pS"},
+		{NewCurrency64(123456000000000), "123.5 pS"},
+		{NewCurrency64(1000000000000000), "1 nS"},
+		{NewCurrency64(1000000000000000000), "1 uS"},
+		{NewCurrency64(1000000000).Mul64(1000000000000), "1 mS"},
+		{NewCurrency64(1).Mul(UplocoinPrecision), "1 SC"},
+		{NewCurrency64(1000).Mul(UplocoinPrecision), "1 KS"},
+		{NewCurrency64(1000000).Mul(UplocoinPrecision), "1 MS"},
+		{NewCurrency64(1000000000).Mul(UplocoinPrecision), "1 GS"},
+		{NewCurrency64(1000000000000).Mul(UplocoinPrecision), "1 TS"},
+		{NewCurrency64(1234560000000).Mul(UplocoinPrecision), "1.235 TS"},
+		{NewCurrency64(1234560000000000).Mul(UplocoinPrecision), "1235 TS"},
+	}
+	for _, test := range tests {
+		if test.in.HumanString() != test.out {
+			t.Errorf("currencyUnits(%v): expected %v, got %v", test.in, test.out, test.in.HumanString())
+		}
+	}
+}
+
+// TestTransactionMarshalUploSize tests that the txn.MarshalUploSize method is
+// always consistent with len(encoding.Marshal(txn)).
+func TestTransactionMarshalUploSize(t *testing.T) {
+	txn := Transaction{
+		UplocoinInputs:         []UplocoinInput{{}},
+		UplocoinOutputs:        []UplocoinOutput{{}},
+		FileContracts:         []FileContract{{}},
+		FileContractRevisions: []FileContractRevision{{}},
+		StorageProofs:         []StorageProof{{}},
+		UplofundInputs:         []UplofundInput{{}},
+		UplofundOutputs:        []UplofundOutput{{}},
+		MinerFees:             []Currency{{}},
+		ArbitraryData:         [][]byte{{}},
+		TransactionSignatures: []TransactionSignature{{}},
+	}
+	if txn.MarshalUploSize() != len(encoding.Marshal(txn)) {
+		t.Errorf("sizes do not match: expected %v, got %v", len(encoding.Marshal(txn)), txn.MarshalUploSize())
+	}
+}
+
+// TestUnlockHashScan checks if the fmt.Scanner implementation of UnlockHash
+// works as expected.
+func TestUnlockHashScan(t *testing.T) {
+	// Create a random unlock hash.
+	var uh UnlockHash
+	fastrand.Read(uh[:])
+	// Convert it to a string and parse the string using Sscan.
+	var scannedHash UnlockHash
+	fmt.Sscan(uh.String(), &scannedHash)
+	// Check if they are equal.
+	if !bytes.Equal(uh[:], scannedHash[:]) {
+		t.Fatal("scanned hash is not equal to original hash")
+	}
+}

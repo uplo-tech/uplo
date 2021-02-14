@@ -1,0 +1,1 @@
+These images are for the communtiy to use in their projects that are built using Uplo. Please refer to [this document](https://support.uplo.tech/article/yh3r6tb68h-brand-guidelines) for specifics on usage.

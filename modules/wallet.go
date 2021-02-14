@@ -1,0 +1,599 @@
+package modules
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+	"unicode"
+
+	mnemonics "github.com/uplo-tech/entropy-mnemonics"
+
+	"github.com/uplo-tech/uplo/crypto"
+	"github.com/uplo-tech/uplo/types"
+)
+
+const (
+	// PublicKeysPerSeed define the number of public keys that get pregenerated
+	// for a seed at startup when searching for balances in the blockchain.
+	PublicKeysPerSeed = 2500
+
+	// SeedChecksumSize is the number of bytes that are used to checksum
+	// addresses to prevent accidental spending.
+	SeedChecksumSize = 6
+
+	// WalletDir is the directory that contains the wallet persistence.
+	WalletDir = "wallet"
+)
+
+var (
+	// ErrBadEncryptionKey is returned if the incorrect encryption key to a
+	// file is provided.
+	ErrBadEncryptionKey = errors.New("provided encryption key is incorrect")
+
+	// ErrIncompleteTransactions is returned if the wallet has incomplete
+	// transactions being built that are using all of the current outputs, and
+	// therefore the wallet is unable to spend money despite it not technically
+	// being 'unconfirmed' yet.
+	ErrIncompleteTransactions = errors.New("wallet has coins spent in incomplete transactions - not enough remaining coins")
+
+	// ErrLockedWallet is returned when an action cannot be performed due to
+	// the wallet being locked.
+	ErrLockedWallet = errors.New("wallet must be unlocked before it can be used")
+
+	// ErrLowBalance is returned if the wallet does not have enough funds to
+	// complete the desired action.
+	ErrLowBalance = errors.New("insufficient balance")
+
+	// ErrWalletShutdown is returned when a method can't continue execution due
+	// to the wallet shutting down.
+	ErrWalletShutdown = errors.New("wallet is shutting down")
+)
+
+type (
+	// Seed is cryptographic entropy that is used to derive spendable wallet
+	// addresses.
+	Seed [crypto.EntropySize]byte
+
+	// WalletTransactionID is a unique identifier for a wallet transaction.
+	WalletTransactionID crypto.Hash
+
+	// A ProcessedInput represents funding to a transaction. The input is
+	// coming from an address and going to the outputs. The fund types are
+	// 'UplocoinInput', 'UplofundInput'.
+	ProcessedInput struct {
+		ParentID       types.OutputID   `json:"parentid"`
+		FundType       types.Specifier  `json:"fundtype"`
+		WalletAddress  bool             `json:"walletaddress"`
+		RelatedAddress types.UnlockHash `json:"relatedaddress"`
+		Value          types.Currency   `json:"value"`
+	}
+
+	// A ProcessedOutput is a Uplocoin output that appears in a transaction.
+	// Some outputs mature immediately, some are delayed, and some may never
+	// mature at all (in the event of storage proofs).
+	//
+	// Fund type can either be 'UplocoinOutput', 'UplofundOutput', 'ClaimOutput',
+	// 'MinerPayout', or 'MinerFee'. All outputs except the miner fee create
+	// outputs accessible to an address. Miner fees are not spendable, and
+	// instead contribute to the block subsidy.
+	//
+	// MaturityHeight indicates at what block height the output becomes
+	// available. UplocoinInputs and UplofundInputs become available immediately.
+	// ClaimInputs and MinerPayouts become available after 144 confirmations.
+	ProcessedOutput struct {
+		ID             types.OutputID    `json:"id"`
+		FundType       types.Specifier   `json:"fundtype"`
+		MaturityHeight types.BlockHeight `json:"maturityheight"`
+		WalletAddress  bool              `json:"walletaddress"`
+		RelatedAddress types.UnlockHash  `json:"relatedaddress"`
+		Value          types.Currency    `json:"value"`
+	}
+
+	// A ProcessedTransaction is a transaction that has been processed into
+	// explicit inputs and outputs and tagged with some header data such as
+	// confirmation height + timestamp.
+	//
+	// Because of the block subsidy, a block is considered as a transaction.
+	// Since there is technically no transaction id for the block subsidy, the
+	// block id is used instead.
+	ProcessedTransaction struct {
+		Transaction           types.Transaction   `json:"transaction"`
+		TransactionID         types.TransactionID `json:"transactionid"`
+		ConfirmationHeight    types.BlockHeight   `json:"confirmationheight"`
+		ConfirmationTimestamp types.Timestamp     `json:"confirmationtimestamp"`
+
+		Inputs  []ProcessedInput  `json:"inputs"`
+		Outputs []ProcessedOutput `json:"outputs"`
+	}
+
+	// ValuedTransaction is a transaction that has been given incoming and
+	// outgoing Uplocoin value fields.
+	ValuedTransaction struct {
+		ProcessedTransaction
+
+		ConfirmedIncomingValue types.Currency `json:"confirmedincomingvalue"`
+		ConfirmedOutgoingValue types.Currency `json:"confirmedoutgoingvalue"`
+	}
+
+	// A UnspentOutput is a UplocoinOutput or UplofundOutput that the wallet
+	// is tracking.
+	UnspentOutput struct {
+		ID                 types.OutputID    `json:"id"`
+		FundType           types.Specifier   `json:"fundtype"`
+		UnlockHash         types.UnlockHash  `json:"unlockhash"`
+		Value              types.Currency    `json:"value"`
+		ConfirmationHeight types.BlockHeight `json:"confirmationheight"`
+		IsWatchOnly        bool              `json:"iswatchonly"`
+	}
+
+	// TransactionBuilder is used to construct custom transactions. A transaction
+	// builder is initialized via 'RegisterTransaction' and then can be modified by
+	// adding funds or other fields. The transaction is completed by calling
+	// 'Sign', which will sign all inputs added via the 'FundUplocoins' or
+	// 'FundUplofunds' call. All modifications are additive.
+	//
+	// Parents of the transaction are kept in the transaction builder. A parent is
+	// any unconfirmed transaction that is required for the child to be valid.
+	//
+	// Transaction builders are not thread safe.
+	TransactionBuilder interface {
+		// FundUplocoins will add a Uplocoin input of exactly 'amount' to the
+		// transaction. A parent transaction may be needed to achieve an input
+		// with the correct value. The Uplocoin input will not be signed until
+		// 'Sign' is called on the transaction builder. The expectation is that
+		// the transaction will be completed and broadcast within a few hours.
+		// Longer risks double-spends, as the wallet will assume that the
+		// transaction failed.
+		FundUplocoins(amount types.Currency) error
+
+		// FundUplofunds will add a uplofund input of exactly 'amount' to the
+		// transaction. A parent transaction may be needed to achieve an input
+		// with the correct value. The uplofund input will not be signed until
+		// 'Sign' is called on the transaction builder. Any Uplocoins that are
+		// released by spending the uplofund outputs will be sent to another
+		// address owned by the wallet. The expectation is that the transaction
+		// will be completed and broadcast within a few hours. Longer risks
+		// double-spends, because the wallet will assume the transaction
+		// failed.
+		FundUplofunds(amount types.Currency) error
+
+		// AddParents adds a set of parents to the transaction.
+		AddParents([]types.Transaction)
+
+		// AddMinerFee adds a miner fee to the transaction, returning the index
+		// of the miner fee within the transaction.
+		AddMinerFee(fee types.Currency) uint64
+
+		// AddUplocoinInput adds a Uplocoin input to the transaction, returning
+		// the index of the Uplocoin input within the transaction. When 'Sign'
+		// gets called, this input will be left unsigned.
+		AddUplocoinInput(types.UplocoinInput) uint64
+
+		// AddUplocoinOutput adds a Uplocoin output to the transaction, returning
+		// the index of the Uplocoin output within the transaction.
+		AddUplocoinOutput(types.UplocoinOutput) uint64
+
+		// ReplaceUplocoinOutput replaces the Uplocoin output in the transaction at the
+		// given index.
+		ReplaceUplocoinOutput(index uint64, output types.UplocoinOutput) error
+
+		// AddFileContract adds a file contract to the transaction, returning
+		// the index of the file contract within the transaction.
+		AddFileContract(types.FileContract) uint64
+
+		// AddFileContractRevision adds a file contract revision to the
+		// transaction, returning the index of the file contract revision
+		// within the transaction. When 'Sign' gets called, this revision will
+		// be left unsigned.
+		AddFileContractRevision(types.FileContractRevision) uint64
+
+		// AddStorageProof adds a storage proof to the transaction, returning
+		// the index of the storage proof within the transaction.
+		AddStorageProof(types.StorageProof) uint64
+
+		// AddUplofundInput adds a uplofund input to the transaction, returning
+		// the index of the uplofund input within the transaction. When 'Sign'
+		// is called, this input will be left unsigned.
+		AddUplofundInput(types.UplofundInput) uint64
+
+		// AddUplofundOutput adds a uplofund output to the transaction, returning
+		// the index of the uplofund output within the transaction.
+		AddUplofundOutput(types.UplofundOutput) uint64
+
+		// AddArbitraryData adds arbitrary data to the transaction, returning
+		// the index of the data within the transaction.
+		AddArbitraryData(arb []byte) uint64
+
+		// AddTransactionSignature adds a transaction signature to the
+		// transaction, returning the index of the signature within the
+		// transaction. The signature should already be valid, and shouldn't
+		// sign any of the inputs that were added by calling 'FundUplocoins' or
+		// 'FundUplofunds'.
+		AddTransactionSignature(types.TransactionSignature) uint64
+
+		// Copy creates a copy of the current transactionBuilder that can be used to
+		// extend the transaction in an alternate way (i.e. create a double spend
+		// transaction).
+		Copy() TransactionBuilder
+
+		// MarkWalletInputs updates internal TransactionBuilder state by inferring
+		// which inputs belong to this wallet. This allows those inputs to be
+		// signed. Returns true if and only if any inputs belonging to the wallet
+		// are found.
+		MarkWalletInputs() bool
+
+		// Sign will sign any inputs added by 'FundUplocoins' or 'FundUplofunds'
+		// and return a transaction set that contains all parents prepended to
+		// the transaction. If more fields need to be added, a new transaction
+		// builder will need to be created.
+		//
+		// If the whole transaction flag is set to true, then the whole
+		// transaction flag will be set in the covered fields object. If the
+		// whole transaction flag is set to false, then the covered fields
+		// object will cover all fields that have already been added to the
+		// transaction, but will also leave room for more fields to be added.
+		//
+		// An error will be returned if there are multiple calls to 'Sign',
+		// sometimes even if the first call to Sign has failed. Sign should
+		// only ever be called once, and if the first signing fails, the
+		// transaction should be dropped.
+		Sign(wholeTransaction bool) ([]types.Transaction, error)
+
+		// Sweep creates a funded txn that sends the inputs of this transactionBuilder
+		// to the specified output if submitted to the blockchain.
+		Sweep(output types.UplocoinOutput) (txn types.Transaction, parents []types.Transaction)
+
+		// UnconfirmedParents returns any unconfirmed parents the transaction set that
+		// is being built by the transaction builder could have.
+		UnconfirmedParents() ([]types.Transaction, error)
+
+		// View returns the incomplete transaction along with all of its
+		// parents.
+		View() (txn types.Transaction, parents []types.Transaction)
+
+		// ViewAdded returns all of the Uplocoin inputs, uplofund inputs, and
+		// parent transactions that have been automatically added by the
+		// builder. Items are returned by index.
+		ViewAdded() (newParents, UplocoinInputs, uplofundInputs, transactionSignatures []int)
+
+		// Drop indicates that a transaction is no longer useful and will not be
+		// broadcast, and that all of the outputs can be reclaimed. 'Drop'
+		// should only be used before signatures are added.
+		Drop()
+	}
+
+	// EncryptionManager can encrypt, lock, unlock, and indicate the current
+	// status of the EncryptionManager.
+	EncryptionManager interface {
+		// Encrypt will encrypt the wallet using the input key. Upon
+		// encryption, a primary seed will be created for the wallet (no seed
+		// exists prior to this point). If the key is blank, then the hash of
+		// the seed that is generated will be used as the key.
+		//
+		// Encrypt can only be called once throughout the life of the wallet
+		// and will return an error on subsequent calls (even after restarting
+		// the wallet). To reset the wallet, the wallet files must be moved to
+		// a different directory or deleted.
+		Encrypt(masterKey crypto.CipherKey) (Seed, error)
+
+		// Reset will reset the wallet, clearing the database and returning it to
+		// the unencrypted state. Reset can only be called on a wallet that has
+		// already been encrypted.
+		Reset() error
+
+		// Encrypted returns whether or not the wallet has been encrypted yet.
+		// After being encrypted for the first time, the wallet can only be
+		// unlocked using the encryption password.
+		Encrypted() (bool, error)
+
+		// InitFromSeed functions like Encrypt, but using a specified seed.
+		// Unlike Encrypt, the blockchain will be scanned to determine the
+		// seed's progress. For this reason, InitFromSeed should not be called
+		// until the blockchain is fully synced.
+		InitFromSeed(masterKey crypto.CipherKey, seed Seed) error
+
+		// Lock deletes all keys in memory and prevents the wallet from being
+		// used to spend coins or extract keys until 'Unlock' is called.
+		Lock() error
+
+		// Unlock must be called before the wallet is usable. All wallets and
+		// wallet seeds are encrypted by default, and the wallet will not know
+		// which addresses to watch for on the blockchain until unlock has been
+		// called.
+		//
+		// All items in the wallet are encrypted using different keys which are
+		// derived from the master key.
+		Unlock(masterKey crypto.CipherKey) error
+
+		// UnlockAsync must be called before the wallet is usable. All wallets and
+		// wallet seeds are encrypted by default, and the wallet will not know
+		// which addresses to watch for on the blockchain until unlock has been
+		// called.
+		// UnlockAsync will return a channel as soon as the wallet is unlocked but
+		// before the wallet is caught up to consensus.
+		//
+		// All items in the wallet are encrypted using different keys which are
+		// derived from the master key.
+		UnlockAsync(masterKey crypto.CipherKey) <-chan error
+
+		// ChangeKey changes the wallet's materKey from masterKey to newKey,
+		// re-encrypting the wallet with the provided key.
+		ChangeKey(masterKey crypto.CipherKey, newKey crypto.CipherKey) error
+
+		// IsMasterKey verifies that the masterKey is the key used to encrypt
+		// the wallet.
+		IsMasterKey(masterKey crypto.CipherKey) (bool, error)
+
+		// ChangeKeyWithSeed is the same as ChangeKey but uses the primary seed
+		// instead of the current masterKey.
+		ChangeKeyWithSeed(seed Seed, newKey crypto.CipherKey) error
+
+		// Unlocked returns true if the wallet is currently unlocked, false
+		// otherwise.
+		Unlocked() (bool, error)
+	}
+
+	// KeyManager manages wallet keys, including the use of seeds, creating and
+	// loading backups, and providing a layer of compatibility for older wallet
+	// files.
+	KeyManager interface {
+		// AllAddresses returns all addresses that the wallet is able to spend
+		// from, including unseeded addresses. Addresses are returned sorted in
+		// byte-order.
+		AllAddresses() ([]types.UnlockHash, error)
+
+		// AllSeeds returns all of the seeds that are being tracked by the
+		// wallet, including the primary seed. Only the primary seed is used to
+		// generate new addresses, but the wallet can spend funds sent to
+		// public keys generated by any of the seeds returned.
+		AllSeeds() ([]Seed, error)
+
+		// CreateBackup will create a backup of the wallet at the provided
+		// filepath. The backup will have all seeds and keys.
+		CreateBackup(string) error
+
+		// LastAddresses returns the last n addresses starting at the last seedProgress
+		// for which an address was generated.
+		LastAddresses(n uint64) ([]types.UnlockHash, error)
+
+		// LoadBackup will load a backup of the wallet from the provided
+		// address. The backup wallet will be added as an auxiliary seed, not
+		// as a primary seed.
+		// LoadBackup(masterKey, backupMasterKey crypto.UploKey, string) error
+
+		// Load033xWallet will load a version 0.3.3.x wallet from disk and add all of
+		// the keys in the wallet as unseeded keys.
+		Load033xWallet(crypto.CipherKey, string) error
+
+		// LoadSeed will recreate a wallet file using the recovery phrase.
+		// LoadSeed only needs to be called if the original seed file or
+		// encryption password was lost. The master key is used to encrypt the
+		// recovery seed before saving it to disk.
+		LoadSeed(crypto.CipherKey, Seed) error
+
+		// LoadUplogKeys will take a set of filepaths that point to a uplog key
+		// and will have the uplog keys loaded into the wallet so that they will
+		// become spendable.
+		LoadUplogKeys(crypto.CipherKey, []string) error
+
+		// NextAddress returns a new coin addresses generated from the
+		// primary seed.
+		NextAddress() (types.UnlockConditions, error)
+
+		// NextAddresses returns n new coin addresses generated from the primary
+		// seed.
+		NextAddresses(uint64) ([]types.UnlockConditions, error)
+
+		// PrimarySeed returns the unencrypted primary seed of the wallet,
+		// along with a uint64 indicating how many addresses may be safely
+		// generated from the seed.
+		PrimarySeed() (Seed, uint64, error)
+
+		// SignTransaction signs txn using secret keys known to the wallet.
+		// The transaction should be complete with the exception of the
+		// Signature fields of each TransactionSignature referenced by toSign.
+		SignTransaction(txn *types.Transaction, toSign []crypto.Hash) error
+
+		// SweepSeed scans the blockchain for outputs generated from seed and
+		// creates a transaction that transfers them to the wallet. Note that
+		// this incurs a transaction fee. It returns the total value of the
+		// outputs, minus the fee. If only uplofunds were found, the fee is
+		// deducted from the wallet.
+		SweepSeed(seed Seed) (coins, funds types.Currency, err error)
+	}
+
+	// Wallet stores and manages Uplocoins and uplofunds. The wallet file is
+	// encrypted using a user-specified password. Common addresses are all
+	// derived from a single address seed.
+	Wallet interface {
+		Alerter
+		EncryptionManager
+		KeyManager
+
+		// AddUnlockConditions adds a set of UnlockConditions to the wallet database.
+		AddUnlockConditions(uc types.UnlockConditions) error
+
+		// AddWatchAddresses instructs the wallet to begin tracking a set of
+		// addresses, in addition to the addresses it was previously tracking.
+		// If none of the addresses have appeared in the blockchain, the
+		// unused flag may be set to true. Otherwise, the wallet must rescan
+		// the blockchain to search for transactions containing the addresses.
+		AddWatchAddresses(addrs []types.UnlockHash, unused bool) error
+
+		// Close permits clean shutdown during testing and serving.
+		Close() error
+
+		// ConfirmedBalance returns the confirmed balance of the wallet, minus
+		// any outgoing transactions. ConfirmedBalance will include unconfirmed
+		// refund transactions.
+		ConfirmedBalance() (UplocoinBalance types.Currency, uplofundBalance types.Currency, UplocoinClaimBalance types.Currency, err error)
+
+		// UnconfirmedBalance returns the unconfirmed balance of the wallet.
+		// Outgoing funds and incoming funds are reported separately. Refund
+		// outputs are included, meaning that sending a single coin to
+		// someone could result in 'outgoing: 12, incoming: 11'. Uplofunds are
+		// not considered in the unconfirmed balance.
+		UnconfirmedBalance() (outgoingUplocoins types.Currency, incomingUplocoins types.Currency, err error)
+
+		// Height returns the wallet's internal processed consensus height
+		Height() (types.BlockHeight, error)
+
+		// AddressTransactions returns all of the transactions that are related
+		// to a given address.
+		AddressTransactions(types.UnlockHash) ([]ProcessedTransaction, error)
+
+		// AddressUnconfirmedHistory returns all of the unconfirmed
+		// transactions related to a given address.
+		AddressUnconfirmedTransactions(types.UnlockHash) ([]ProcessedTransaction, error)
+
+		// Transaction returns the transaction with the given id. The bool
+		// indicates whether the transaction is in the wallet database. The
+		// wallet only stores transactions that are related to the wallet.
+		Transaction(types.TransactionID) (ProcessedTransaction, bool, error)
+
+		// Transactions returns all of the transactions that were confirmed at
+		// heights [startHeight, endHeight]. Unconfirmed transactions are not
+		// included.
+		Transactions(startHeight types.BlockHeight, endHeight types.BlockHeight) ([]ProcessedTransaction, error)
+
+		// UnconfirmedTransactions returns all unconfirmed transactions
+		// relative to the wallet.
+		UnconfirmedTransactions() ([]ProcessedTransaction, error)
+
+		// RegisterTransaction takes a transaction and its parents and returns
+		// a TransactionBuilder which can be used to expand the transaction.
+		RegisterTransaction(t types.Transaction, parents []types.Transaction) (TransactionBuilder, error)
+
+		// RemoveWatchAddresses instructs the wallet to stop tracking a set of
+		// addresses and delete their associated transactions. If none of the
+		// addresses have appeared in the blockchain, the unused flag may be
+		// set to true. Otherwise, the wallet must rescan the blockchain to
+		// rebuild its transaction history.
+		RemoveWatchAddresses(addrs []types.UnlockHash, unused bool) error
+
+		// Rescanning reports whether the wallet is currently rescanning the
+		// blockchain.
+		Rescanning() (bool, error)
+
+		// Settings returns the Wallet's current settings.
+		Settings() (WalletSettings, error)
+
+		// SetSettings sets the Wallet's settings.
+		SetSettings(WalletSettings) error
+
+		// StartTransaction is a convenience method that calls
+		// RegisterTransaction(types.Transaction{}, nil)
+		StartTransaction() (TransactionBuilder, error)
+
+		// SendUplocoins is a tool for sending Uplocoins from the wallet to an
+		// address. Sending money usually results in multiple transactions. The
+		// transactions are automatically given to the transaction pool, and are
+		// also returned to the caller.
+		SendUplocoins(amount types.Currency, dest types.UnlockHash) ([]types.Transaction, error)
+
+		// SendUplocoinsFeeIncluded sends Uplocoins with fees included.
+		SendUplocoinsFeeIncluded(amount types.Currency, dest types.UnlockHash) ([]types.Transaction, error)
+
+		// SendUplocoinsMulti sends coins to multiple addresses.
+		SendUplocoinsMulti(outputs []types.UplocoinOutput) ([]types.Transaction, error)
+
+		// SendUplofunds is a tool for sending uplofunds from the wallet to an
+		// address. Sending money usually results in multiple transactions. The
+		// transactions are automatically given to the transaction pool, and
+		// are also returned to the caller.
+		SendUplofunds(amount types.Currency, dest types.UnlockHash) ([]types.Transaction, error)
+
+		// DustThreshold returns the quantity per byte below which a Currency is
+		// considered to be Dust.
+		DustThreshold() (types.Currency, error)
+
+		// UnspentOutputs returns the unspent outputs tracked by the wallet.
+		UnspentOutputs() ([]UnspentOutput, error)
+
+		// UnlockConditions returns the UnlockConditions for the specified
+		// address, if they are known to the wallet.
+		UnlockConditions(addr types.UnlockHash) (types.UnlockConditions, error)
+
+		// WatchAddresses returns the set of addresses that the wallet is
+		// currently watching.
+		WatchAddresses() ([]types.UnlockHash, error)
+	}
+
+	// WalletSettings control the behavior of the Wallet.
+	WalletSettings struct {
+		NoDefrag bool `json:"nodefrag"`
+	}
+)
+
+// CalculateWalletTransactionID is a helper function for determining the id of
+// a wallet transaction.
+func CalculateWalletTransactionID(tid types.TransactionID, oid types.OutputID) WalletTransactionID {
+	return WalletTransactionID(crypto.HashAll(tid, oid))
+}
+
+// SeedToString converts a wallet seed to a human friendly string.
+func SeedToString(seed Seed, did mnemonics.DictionaryID) (string, error) {
+	fullChecksum := crypto.HashObject(seed)
+	checksumSeed := append(seed[:], fullChecksum[:SeedChecksumSize]...)
+	phrase, err := mnemonics.ToPhrase(checksumSeed, did)
+	if err != nil {
+		return "", err
+	}
+	return phrase.String(), nil
+}
+
+// StringToSeed converts a string to a wallet seed.
+func StringToSeed(str string, did mnemonics.DictionaryID) (Seed, error) {
+	// Ensure the string is all lowercase letters and spaces
+	for _, char := range str {
+		if unicode.IsUpper(char) {
+			return Seed{}, errors.New("seed is not valid: all words must be lowercase")
+		}
+		if !unicode.IsLetter(char) && !unicode.IsSpace(char) {
+			return Seed{}, fmt.Errorf("seed is not valid: illegal character '%v'", char)
+		}
+	}
+
+	// Decode the string into the checksummed byte slice.
+	checksumSeedBytes, err := mnemonics.FromString(str, did)
+	if err != nil {
+		return Seed{}, err
+	}
+
+	// ToDo: Add other languages
+	switch {
+	case did == "english":
+		// Check seed has 28 or 29 words
+		if len(strings.Fields(str)) != 28 && len(strings.Fields(str)) != 29 {
+			return Seed{}, errors.New("seed is not valid: must be 28 or 29 words")
+		}
+
+		// Check for other formatting errors (English only)
+		IsFormat := regexp.MustCompile(`^([a-z]{4,12}){1}( {1}[a-z]{4,12}){27,28}$`).MatchString
+		if !IsFormat(str) {
+			return Seed{}, errors.New("seed is not valid: invalid formatting")
+		}
+	case did == "german":
+	case did == "japanese":
+	default:
+		return Seed{}, fmt.Errorf("seed is not valid: unsupported dictionary '%v'", did)
+	}
+
+	// Ensure the seed is 38 bytes (this check is not too helpful since it doesn't
+	// give any hints about what is wrong to the end user, which is why it's the
+	// last thing checked)
+	if len(checksumSeedBytes) != 38 {
+		return Seed{}, fmt.Errorf("seed is not valid: illegal number of bytes '%v'", len(checksumSeedBytes))
+	}
+
+	// Copy the seed from the checksummed slice.
+	var seed Seed
+	copy(seed[:], checksumSeedBytes)
+	fullChecksum := crypto.HashObject(seed)
+	if len(checksumSeedBytes) != crypto.EntropySize+SeedChecksumSize || !bytes.Equal(fullChecksum[:SeedChecksumSize], checksumSeedBytes[crypto.EntropySize:]) {
+		return Seed{}, errors.New("seed failed checksum verification")
+	}
+	return seed, nil
+}
