@@ -13,7 +13,7 @@ import (
 
 type (
 	// uplodir contains the metadata information about a renter directory
-	uplodir struct {
+	Uplodir struct {
 		metadata Metadata
 
 		// path is the path of the uplodir folder.
@@ -104,33 +104,33 @@ type (
 )
 
 // mdPath returns the path of the uplodir's metadata on disk.
-func (sd *uplodir) mdPath() string {
-	return filepath.Join(sd.path, modules.uplodirExtension)
+func (sd *Uplodir) mdPath() string {
+	return filepath.Join(sd.path, modules.UplodirExtension)
 }
 
 // Deleted returns the deleted field of the uplodir
-func (sd *uplodir) Deleted() bool {
+func (sd *Uplodir) Deleted() bool {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	return sd.deleted
 }
 
 // Metadata returns the metadata of the uplodir
-func (sd *uplodir) Metadata() Metadata {
+func (sd *Uplodir) Metadata() Metadata {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	return sd.metadata
 }
 
 // Path returns the path of the uplodir on disk.
-func (sd *uplodir) Path() string {
+func (sd *Uplodir) Path() string {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	return sd.path
 }
 
 // MDPath returns the path of the uplodir's metadata on disk.
-func (sd *uplodir) MDPath() string {
+func (sd *Uplodir) MDPath() string {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	return sd.mdPath()

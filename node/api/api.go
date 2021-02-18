@@ -128,7 +128,7 @@ type (
 		requiredUserAgent string
 		requiredPassword  string
 		Shutdown          func() error
-		uplodConfig        *modules.uplodConfig
+		uplodConfig        *modules.UplodConfig
 
 		staticStartTime time.Time
 
@@ -194,7 +194,7 @@ func (api *API) StartTime() time.Time {
 // New creates a new Uplo API from the provided modules. The API will require
 // authentication using HTTP basic auth for certain endpoints of the supplied
 // password is not the empty string.  Usernames are ignored for authentication.
-func New(cfg *modules.uplodConfig, requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, fm modules.FeeManager, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet) *API {
+func New(cfg *modules.UplodConfig, requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, fm modules.FeeManager, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet) *API {
 	return NewCustom(cfg, requiredUserAgent, requiredPassword, cs, e, fm, g, h, m, r, tp, w, modules.ProdDependencies)
 }
 
@@ -203,7 +203,7 @@ func New(cfg *modules.uplodConfig, requiredUserAgent string, requiredPassword st
 // supplied password is not the empty string. Usernames are ignored for
 // authentication. It is custom because it allows to inject custom dependencies
 // into the API.
-func NewCustom(cfg *modules.uplodConfig, requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, fm modules.FeeManager, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, a modules.Dependencies) *API {
+func NewCustom(cfg *modules.UplodConfig, requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, fm modules.FeeManager, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, a modules.Dependencies) *API {
 	api := &API{
 		cs:                cs,
 		explorer:          e,

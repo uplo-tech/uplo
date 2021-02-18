@@ -123,7 +123,7 @@ func readMetadataUpdate(update writeaheadlog.Update) (data []byte, path string, 
 
 // applyUpdates applies a number of writeaheadlog updates to the corresponding
 // uplodir.
-func (sd *uplodir) applyUpdates(updates ...writeaheadlog.Update) error {
+func (sd *Uplodir) applyUpdates(updates ...writeaheadlog.Update) error {
 	// If the set of updates contains a delete, all updates prior to that delete
 	// are irrelevant, so perform the last delete and then process the remaining
 	// updates. This also prevents a bug on Windows where we attempt to delete
@@ -182,7 +182,7 @@ func (sd *uplodir) applyUpdates(updates ...writeaheadlog.Update) error {
 
 // createAndApplyTransaction is a helper method that creates a writeaheadlog
 // transaction and applies it.
-func (sd *uplodir) createAndApplyTransaction(updates ...writeaheadlog.Update) (err error) {
+func (sd *Uplodir) createAndApplyTransaction(updates ...writeaheadlog.Update) (err error) {
 	// This should never be called on a deleted directory.
 	if sd.deleted {
 		return errors.New("shouldn't apply updates on deleted directory")
@@ -216,7 +216,7 @@ func (sd *uplodir) createAndApplyTransaction(updates ...writeaheadlog.Update) (e
 
 // createDeleteUpdate is a helper method that creates a writeaheadlog for
 // deleting a directory.
-func (sd *uplodir) createDeleteUpdate() writeaheadlog.Update {
+func (sd *Uplodir) createDeleteUpdate() writeaheadlog.Update {
 	return writeaheadlog.Update{
 		Name:         updateDeleteName,
 		Instructions: []byte(sd.path),
@@ -227,7 +227,7 @@ func (sd *uplodir) createDeleteUpdate() writeaheadlog.Update {
 // applies it.
 //
 // NOTE: This method does not fsync after the write.
-func (sd *uplodir) readAndApplyMetadataUpdate(file modules.File, update writeaheadlog.Update) error {
+func (sd *Uplodir) readAndApplyMetadataUpdate(file modules.File, update writeaheadlog.Update) error {
 	// Decode update.
 	data, path, err := readMetadataUpdate(update)
 	if err != nil {
@@ -252,6 +252,6 @@ func (sd *uplodir) readAndApplyMetadataUpdate(file modules.File, update writeahe
 }
 
 // saveMetadataUpdate saves the metadata of the uplodir
-func (sd *uplodir) saveMetadataUpdate() (writeaheadlog.Update, error) {
+func (sd *Uplodir) saveMetadataUpdate() (writeaheadlog.Update, error) {
 	return createMetadataUpdate(sd.mdPath(), sd.metadata)
 }

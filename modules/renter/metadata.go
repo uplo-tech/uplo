@@ -551,16 +551,16 @@ func (r *Renter) managedDirectoryMetadata(uploPath modules.UploPath) (_ uplodir.
 	}
 
 	//  Open uplodir
-	uplodir, err := r.staticFileSystem.OpenuplodirCustom(uploPath, true)
+	uploDir, err := r.staticFileSystem.OpenuplodirCustom(uploPath, true)
 	if err != nil {
 		return uplodir.Metadata{}, err
 	}
 	defer func() {
-		err = errors.Compose(err, uplodir.Close())
+		err = errors.Compose(err, uploDir.Close())
 	}()
 
 	// Grab the metadata.
-	return uplodir.Metadata()
+	return uploDir.Metadata()
 }
 
 // managedUpdateLastHealthCheckTime updates the LastHealthCheckTime and

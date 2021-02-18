@@ -8,7 +8,7 @@ import (
 // keeping the file in memory locked.
 type DirReader struct {
 	f  *os.File
-	sd *uplodir
+	sd *Uplodir
 }
 
 // Close closes the underlying file.
@@ -29,7 +29,7 @@ func (sdr *DirReader) Stat() (os.FileInfo, error) {
 
 // DirReader creates a io.ReadCloser that can be used to read the raw uplodir
 // from disk.
-func (sd *uplodir) DirReader() (*DirReader, error) {
+func (sd *Uplodir) DirReader() (*DirReader, error) {
 	sd.mu.Lock()
 	if sd.deleted {
 		sd.mu.Unlock()

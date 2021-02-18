@@ -25,7 +25,7 @@ var (
 	ErrInvalidPathString = errors.New("invalid path string")
 
 	// uplodirExtension is the extension for uplodir metadata files on disk
-	uplodirExtension = ".uplodir"
+	UplodirExtension = ".uplodir"
 
 	// UploFileExtension is the extension for uplofiles on disk
 	UploFileExtension = ".uplo"
@@ -229,14 +229,14 @@ func (sp *UploPath) UnmarshalJSON(b []byte) error {
 
 // uplodirSysPath returns the system path needed to read a directory on disk, the
 // input dir is the root uplodir directory on disk
-func (sp UploPath) uplodirSysPath(dir string) string {
+func (sp UploPath) UplodirSysPath(dir string) string {
 	return filepath.Join(dir, filepath.FromSlash(sp.Path), "")
 }
 
 // uplodirMetadataSysPath returns the system path needed to read the uplodir
 // metadata file from disk, the input dir is the root uplodir directory on disk
 func (sp UploPath) uplodirMetadataSysPath(dir string) string {
-	return filepath.Join(dir, filepath.FromSlash(sp.Path), uplodirExtension)
+	return filepath.Join(dir, filepath.FromSlash(sp.Path), UplodirExtension)
 }
 
 // UploFileSysPath returns the system path needed to read the UploFile from disk,

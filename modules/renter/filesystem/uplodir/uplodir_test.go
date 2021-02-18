@@ -192,9 +192,9 @@ func TestUpdateMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	uplodirSysPath := uploPath.uplodirSysPath(rootDir)
+	UplodirSysPath := uploPath.UplodirSysPath(rootDir)
 	wal, _ := newTestWAL()
-	uplodir, err := New(uplodirSysPath, rootDir, modules.DefaultDirPerm, wal)
+	uplodir, err := New(UplodirSysPath, rootDir, modules.DefaultDirPerm, wal)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestUpdateMetadata(t *testing.T) {
 	if err = checkMetadataInit(md); err != nil {
 		t.Fatal(err)
 	}
-	uplodir, err = Loaduplodir(uplodirSysPath, modules.ProdDependencies, wal)
+	uplodir, err = Loaduplodir(UplodirSysPath, modules.ProdDependencies, wal)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestUpdateMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	uplodir, err = Loaduplodir(uplodirSysPath, modules.ProdDependencies, wal)
+	uplodir, err = Loaduplodir(UplodirSysPath, modules.ProdDependencies, wal)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestuplodirDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	uplodirSysPath := uploPath.uplodirSysPath(rootDir)
+	uplodirSysPath := uploPath.UplodirSysPath(rootDir)
 	wal, _ := newTestWAL()
 	uplodir, err := New(uplodirSysPath, rootDir, modules.DefaultDirPerm, wal)
 	if err != nil {

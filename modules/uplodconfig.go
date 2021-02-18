@@ -12,7 +12,7 @@ import (
 
 type (
 	// uplodConfig is a helper type to manage the global uplod config.
-	uplodConfig struct {
+	UplodConfig struct {
 		// Ratelimit related fields
 		ReadBPS            int64  `json:"readbps"`
 		WriteBPSDeprecated int64  `json:"writeps,uplomismatch"`
@@ -41,7 +41,7 @@ var (
 
 // SetRatelimit sets the ratelimit related fields in the config and persists it
 // to disk.
-func (cfg *uplodConfig) SetRatelimit(readBPS, writeBPS int64) error {
+func (cfg *UplodConfig) SetRatelimit(readBPS, writeBPS int64) error {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 	// Input validation.
@@ -60,19 +60,19 @@ func (cfg *uplodConfig) SetRatelimit(readBPS, writeBPS int64) error {
 }
 
 // save saves the config to disk.
-func (cfg *uplodConfig) save() error {
+func (cfg *UplodConfig) save() error {
 	return persist.SaveJSON(configMetadata, cfg, cfg.path)
 }
 
 // load loads the config from disk.
-func (cfg *uplodConfig) load(path string) error {
+func (cfg *UplodConfig) load(path string) error {
 	defer cfg.writeBPSCompat()
 	return persist.LoadJSON(configMetadata, cfg, path)
 }
 
 // writeBPSCompat is compatibility code for addressing the the incorrect json
 // tag upgrade from `writeps` to `writebps`
-func (cfg *uplodConfig) writeBPSCompat() {
+func (cfg *UplodConfig) writeBPSCompat() {
 	// If the deprecated tag field is none zero and the new field is still zero,
 	// set the new field
 	if cfg.WriteBPSDeprecated != 0 && cfg.WriteBPS == 0 {
@@ -84,8 +84,8 @@ func (cfg *uplodConfig) writeBPSCompat() {
 
 // NewConfig loads a config from disk or creates a new one if no config exists
 // yet.
-func NewConfig(path string) (*uplodConfig, error) {
-	var cfg uplodConfig
+func NewConfig(path string) (*UplodConfig, error) {
+	var cfg UplodConfig
 	cfg.path = path
 	// Try loading the config from disk first.
 	err := cfg.load(cfg.path)

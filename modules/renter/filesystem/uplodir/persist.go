@@ -108,7 +108,7 @@ func IsuplodirUpdate(update writeaheadlog.Update) bool {
 //
 // NOTE: the fullPath is expected to include the rootPath. The rootPath is used
 // to determine when to stop recursively creating uplodir metadata.
-func New(fullPath, rootPath string, mode os.FileMode, wal *writeaheadlog.WAL) (*uplodir, error) {
+func New(fullPath, rootPath string, mode os.FileMode, wal *writeaheadlog.WAL) (*Uplodir, error) {
 	// Create path to directory and ensure path contains all metadata
 	updates, err := createDirMetadataAll(fullPath, rootPath, mode)
 	if err != nil {
@@ -122,7 +122,7 @@ func New(fullPath, rootPath string, mode os.FileMode, wal *writeaheadlog.WAL) (*
 	}
 
 	// Create uplodir
-	sd := &uplodir{
+	sd := &Uplodir{
 		metadata: md,
 		deps:     modules.ProdDependencies,
 		path:     fullPath,
@@ -133,13 +133,13 @@ func New(fullPath, rootPath string, mode os.FileMode, wal *writeaheadlog.WAL) (*
 }
 
 // Loaduplodir loads the directory metadata from disk
-func Loaduplodir(path string, deps modules.Dependencies, wal *writeaheadlog.WAL) (sd *uplodir, err error) {
-	sd = &uplodir{
+func Loaduplodir(path string, deps modules.Dependencies, wal *writeaheadlog.WAL) (sd *Uplodir, err error) {
+	sd = &Uplodir{
 		deps: deps,
 		path: path,
 		wal:  wal,
 	}
-	sd.metadata, err = callLoaduplodirMetadata(filepath.Join(path, modules.uplodirExtension), modules.ProdDependencies)
+	sd.metadata, err = callLoaduplodirMetadata(filepath.Join(path, modules.UplodirExtension), modules.ProdDependencies)
 	return sd, err
 }
 
@@ -147,7 +147,7 @@ func Loaduplodir(path string, deps modules.Dependencies, wal *writeaheadlog.WAL)
 // creates one as needed
 func createDirMetadata(path string, mode os.FileMode) (Metadata, writeaheadlog.Update, error) {
 	// Check if metadata file exists
-	mdPath := filepath.Join(path, modules.uplodirExtension)
+	mdPath := filepath.Join(path, modules.UplodirExtension)
 	_, err := os.Stat(mdPath)
 	if err == nil {
 		return Metadata{}, writeaheadlog.Update{}, os.ErrExist
@@ -245,7 +245,7 @@ func callLoaduplodirMetadata(path string, deps modules.Dependencies) (md Metadat
 }
 
 // Rename renames the uplodir to targetPath.
-func (sd *uplodir) rename(targetPath string) error {
+func (sd *Uplodir) rename(targetPath string) error {
 	// TODO: os.Rename is not ACID
 	err := os.Rename(sd.path, targetPath)
 	if err != nil {
@@ -258,7 +258,7 @@ func (sd *uplodir) rename(targetPath string) error {
 // Delete removes the directory from disk and marks it as deleted. Once the
 // directory is deleted, attempting to access the directory will return an
 // error.
-func (sd *uplodir) Delete() error {
+func (sd *Uplodir) Delete() error {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 
@@ -275,7 +275,7 @@ func (sd *uplodir) Delete() error {
 }
 
 // saveDir saves the whole uplodir atomically.
-func (sd *uplodir) saveDir() error {
+func (sd *Uplodir) saveDir() error {
 	// Check if Deleted
 	if sd.deleted {
 		return errors.AddContext(ErrDeleted, "cannot save a deleted uplodir")
@@ -288,7 +288,7 @@ func (sd *uplodir) saveDir() error {
 }
 
 // Rename renames the uplodir to targetPath.
-func (sd *uplodir) Rename(targetPath string) error {
+func (sd *Uplodir) Rename(targetPath string) error {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 
@@ -300,7 +300,7 @@ func (sd *uplodir) Rename(targetPath string) error {
 }
 
 // SetPath sets the path field of the dir.
-func (sd *uplodir) SetPath(targetPath string) error {
+func (sd *Uplodir) SetPath(targetPath string) error {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	// Check if Deleted
@@ -314,7 +314,7 @@ func (sd *uplodir) SetPath(targetPath string) error {
 // UpdateBubbledMetadata updates the uplodir Metadata that is bubbled and saves
 // the changes to disk. For fields that are not bubbled, this method sets them
 // to the current values in the uplodir metadata
-func (sd *uplodir) UpdateBubbledMetadata(metadata Metadata) error {
+func (sd *Uplodir) UpdateBubbledMetadata(metadata Metadata) error {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	metadata.Mode = sd.metadata.Mode
@@ -324,7 +324,7 @@ func (sd *uplodir) UpdateBubbledMetadata(metadata Metadata) error {
 
 // UpdateLastHealthCheckTime updates the uplodir LastHealthCheckTime and
 // AggregateLastHealthCheckTime and saves the changes to disk
-func (sd *uplodir) UpdateLastHealthCheckTime(aggregateLastHealthCheckTime, lastHealthCheckTime time.Time) error {
+func (sd *Uplodir) UpdateLastHealthCheckTime(aggregateLastHealthCheckTime, lastHealthCheckTime time.Time) error {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	md := sd.metadata
@@ -334,14 +334,14 @@ func (sd *uplodir) UpdateLastHealthCheckTime(aggregateLastHealthCheckTime, lastH
 }
 
 // UpdateMetadata updates the uplodir metadata on disk
-func (sd *uplodir) UpdateMetadata(metadata Metadata) error {
+func (sd *Uplodir) UpdateMetadata(metadata Metadata) error {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
 	return sd.updateMetadata(metadata)
 }
 
 // updateMetadata updates the uplodir metadata on disk
-func (sd *uplodir) updateMetadata(metadata Metadata) error {
+func (sd *Uplodir) updateMetadata(metadata Metadata) error {
 	// Check if the directory is deleted
 	if sd.deleted {
 		return errors.AddContext(ErrDeleted, "cannot update the metadata for a deleted directory")

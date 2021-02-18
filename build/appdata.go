@@ -43,19 +43,19 @@ func APIPassword() (string, error) {
 // ProfileDir returns the directory where any profiles for the running uplod
 // instance will be stored
 func ProfileDir() string {
-	return filepath.Join(uplodDataDir(), "profile")
+	return filepath.Join(UplodDataDir(), "profile")
 }
 
 // uplodDataDir returns the uplod consensus data directory from the
 // environment variable. If there is no environment variable it returns an empty
 // string, instructing uplod to store the consensus in the current directory.
-func uplodDataDir() string {
+func UplodDataDir() string {
 	return os.Getenv(uplodDataDir)
 }
 
 // uplodir returns the Uplo data directory either from the environment variable or
 // the default.
-func uplodir() string {
+func Uplodir() string {
 	uplodir := os.Getenv(uplodataDir)
 	if uplodir == "" {
 		uplodir = defaultuplodir()
@@ -81,13 +81,13 @@ func ExchangeRate() string {
 // apiPasswordFilePath returns the path to the API's password file. The password
 // file is stored in the Uplo data directory.
 func apiPasswordFilePath() string {
-	return filepath.Join(uplodir(), "apipassword")
+	return filepath.Join(Uplodir(), "apipassword")
 }
 
 // createAPIPasswordFile creates an api password file in the Uplo data directory
 // and returns the newly created password
 func createAPIPasswordFile() (string, error) {
-	err := os.MkdirAll(uplodir(), 0700)
+	err := os.MkdirAll(Uplodir(), 0700)
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +96,7 @@ func createAPIPasswordFile() (string, error) {
 	// potential attackers from accessing the sensitive information inside, both
 	// by reading the contents of the directory and/or by creating files with
 	// specific names which uplod would later on read from and/or write to.
-	err = os.Chmod(uplodir(), 0700)
+	err = os.Chmod(Uplodir(), 0700)
 	if err != nil {
 		return "", err
 	}

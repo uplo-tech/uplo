@@ -165,7 +165,7 @@ func (api *API) buildExplorerTransaction(height types.BlockHeight, parent types.
 	}
 
 	for _, sfi := range txn.UplofundInputs {
-		et.UplofundClaimOutputIDs = append(et.UplofundClaimOutputIDs, sfi.ParentID.uploclaimOutputID())
+		et.UplofundClaimOutputIDs = append(et.UplofundClaimOutputIDs, sfi.ParentID.UploclaimOutputID())
 	}
 	return et
 }

@@ -49,7 +49,7 @@ func TestuplodDataDir(t *testing.T) {
 	}
 
 	// Test Default uplodDataDir
-	uplodDir := uplodDataDir()
+	uplodDir := UplodDataDir()
 	if uplodDir != "" {
 		t.Errorf("Expected uplodDir to be empty but was %v", uplodDir)
 	}
@@ -60,7 +60,7 @@ func TestuplodDataDir(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	uplodDir = uplodDataDir()
+	uplodDir = UplodDataDir()
 	if uplodDir != newuplodir {
 		t.Errorf("Expected uplodDir to be %v but was %v", newuplodir, uplodDir)
 	}

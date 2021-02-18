@@ -166,7 +166,7 @@ func applyUplofundInputs(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
 			Value:      claimPortion,
 			UnlockHash: sfi.ClaimUnlockHash,
 		}
-		sfoid := sfi.ParentID.uploclaimOutputID()
+		sfoid := sfi.ParentID.UploclaimOutputID()
 		dscod := modules.DelayedUplocoinOutputDiff{
 			Direction:      modules.DiffApply,
 			ID:             sfoid,

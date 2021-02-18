@@ -247,7 +247,7 @@ func (r *Renter) managedTarUploFiles(tw *tar.Writer) error {
 		}
 		// Nothing to do for non-folders and non-uplofiles.
 		if !info.IsDir() && filepath.Ext(path) != modules.UploFileExtension &&
-			filepath.Ext(path) != modules.uplodirExtension {
+			filepath.Ext(path) != modules.UplodirExtension {
 			return nil
 		}
 		// Create the header for the file/dir.
@@ -293,10 +293,10 @@ func (r *Renter) managedTarUploFiles(tw *tar.Writer) error {
 				return err
 			}
 			header.Size = fi.Size()
-		} else if filepath.Ext(path) == modules.uplodirExtension {
+		} else if filepath.Ext(path) == modules.UplodirExtension {
 			// Get the uplodir.
 			var uploPath modules.UploPath
-			uploPathStr := strings.TrimSuffix(relPath, modules.uplodirExtension)
+			uploPathStr := strings.TrimSuffix(relPath, modules.UplodirExtension)
 			if uploPathStr == string(filepath.Separator) {
 				uploPath = modules.UserFolder
 			} else {
@@ -371,7 +371,7 @@ func (r *Renter) managedUntarDir(tr *tar.Reader) error {
 		if err != nil {
 			return errors.AddContext(err, "could not load the new file in memory")
 		}
-		if name := filepath.Base(info.Name()); name == modules.uplodirExtension {
+		if name := filepath.Base(info.Name()); name == modules.UplodirExtension {
 			// Load the file as a .uplodir
 			var md uplodir.Metadata
 			err = json.Unmarshal(b, &md)

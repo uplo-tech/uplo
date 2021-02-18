@@ -155,7 +155,7 @@ func New(root string, log *persist.Logger, wal *writeaheadlog.WAL) (*FileSystem,
 			node:        newNode(nil, root, "", 0, wal, log),
 			directories: make(map[string]*DirNode),
 			files:       make(map[string]*FileNode),
-			lazyuplodir:  new(*uplodir.uplodir),
+			lazyuplodir:  new(*uplodir.Uplodir),
 		},
 	}
 	// Prepare root folder.
@@ -332,7 +332,7 @@ func (fs *FileSystem) NewUploFile(uploPath modules.UploPath, source string, ec m
 // ReadDir reads all the fileinfos of the specified dir.
 func (fs *FileSystem) ReadDir(uploPath modules.UploPath) ([]os.FileInfo, error) {
 	// Open dir.
-	dirPath := uploPath.uplodirSysPath(fs.managedAbsPath())
+	dirPath := uploPath.UplodirSysPath(fs.managedAbsPath())
 	f, err := os.Open(dirPath)
 	if err != nil {
 		return nil, err
@@ -357,7 +357,7 @@ func (fs *FileSystem) DirExists(uploPath modules.UploPath) (bool, error) {
 
 // DirPath converts a UploPath into a dir's system path.
 func (fs *FileSystem) DirPath(uploPath modules.UploPath) string {
-	return uploPath.uplodirSysPath(fs.managedAbsPath())
+	return uploPath.UplodirSysPath(fs.managedAbsPath())
 }
 
 // Root returns the root system path of the FileSystem.
@@ -395,14 +395,14 @@ func (fs *FileSystem) managedUploPath(n *node) modules.UploPath {
 // Stat is a wrapper for os.Stat which takes a UploPath as an argument instead of
 // a system path.
 func (fs *FileSystem) Stat(uploPath modules.UploPath) (os.FileInfo, error) {
-	path := uploPath.uplodirSysPath(fs.managedAbsPath())
+	path := uploPath.UplodirSysPath(fs.managedAbsPath())
 	return os.Stat(path)
 }
 
 // Walk is a wrapper for filepath.Walk which takes a UploPath as an argument
 // instead of a system path.
 func (fs *FileSystem) Walk(uploPath modules.UploPath, walkFn filepath.WalkFunc) error {
-	dirPath := uploPath.uplodirSysPath(fs.managedAbsPath())
+	dirPath := uploPath.UplodirSysPath(fs.managedAbsPath())
 	return filepath.Walk(dirPath, walkFn)
 }
 
@@ -647,7 +647,7 @@ func (fs *FileSystem) managedNewuplodir(uploPath modules.UploPath, mode os.FileM
 	if uploPath.IsRoot() {
 		fs.mu.Lock()
 		defer fs.mu.Unlock()
-		dirPath := uploPath.uplodirSysPath(fs.absPath())
+		dirPath := uploPath.UplodirSysPath(fs.absPath())
 		_, err := uplodir.New(dirPath, fs.absPath(), mode, fs.staticWal)
 		// If the uplodir already exists on disk, return without an error.
 		if os.IsExist(err) {
@@ -727,7 +727,7 @@ func (fs *FileSystem) managedNewUploFile(relPath string, source string, ec modul
 func (fs *FileSystem) managedOpenuplodir(uploPath modules.UploPath) (*DirNode, error) {
 	if uploPath.IsRoot() {
 		// Make sure the metadata exists.
-		_, err := os.Stat(filepath.Join(fs.absPath(), modules.uplodirExtension))
+		_, err := os.Stat(filepath.Join(fs.absPath(), modules.UplodirExtension))
 		if os.IsNotExist(err) {
 			return nil, ErrNotExist
 		}

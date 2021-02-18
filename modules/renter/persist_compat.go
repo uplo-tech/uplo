@@ -437,9 +437,9 @@ func (r *Renter) convertPersistVersionFrom140To142(path string) error {
 	}
 	// Rename uplofiles folder to fs/home/user and snapshots to fs/snapshots.
 	fsRoot := filepath.Join(r.persistDir, modules.FileSystemRoot)
-	newHomePath := modules.HomeFolder.uplodirSysPath(fsRoot)
-	newUploFilesPath := modules.UserFolder.uplodirSysPath(fsRoot)
-	newSnapshotsPath := modules.BackupFolder.uplodirSysPath(fsRoot)
+	newHomePath := modules.HomeFolder.UplodirSysPath(fsRoot)
+	newUploFilesPath := modules.UserFolder.UplodirSysPath(fsRoot)
+	newSnapshotsPath := modules.BackupFolder.UplodirSysPath(fsRoot)
 	if err := os.MkdirAll(newHomePath, 0700); err != nil {
 		return errors.AddContext(err, "failed to create new home dir")
 	}

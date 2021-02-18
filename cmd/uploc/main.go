@@ -272,7 +272,7 @@ func main() {
 		// Check if the uplodir is set.
 		if uplodir == "" {
 			// No uplodir passed in, fetch the uplodir
-			uplodir = build.uplodir()
+			uplodir = build.Uplodir()
 		}
 
 		// Check for Critical Alerts

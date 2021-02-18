@@ -235,7 +235,7 @@ func (t Transaction) RenterSignature() TransactionSignature {
 
 // uploclaimOutputID returns the ID of the UplocoinOutput that is created when
 // the uplofund output is spent. The ID is the hash the UplofundOutputID.
-func (id UplofundOutputID) uploclaimOutputID() UplocoinOutputID {
+func (id UplofundOutputID) UploclaimOutputID() UplocoinOutputID {
 	return UplocoinOutputID(crypto.HashObject(id))
 }
 

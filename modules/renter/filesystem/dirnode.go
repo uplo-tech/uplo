@@ -28,7 +28,7 @@ type (
 		// lazyuplodir is the uplodir of the DirNode. 'lazy' means that it will
 		// only be loaded on demand and destroyed as soon as the length of
 		// 'threads' reaches 0.
-		lazyuplodir **uplodir.uplodir
+		lazyuplodir **uplodir.Uplodir
 	}
 )
 
@@ -415,7 +415,7 @@ func (n *DirNode) managedUniquePrefix(path string, uid uplofile.UplofileUID) (st
 }
 
 // uplodir is a wrapper for the lazyuplodir field.
-func (n *DirNode) uplodir() (*uplodir.uplodir, error) {
+func (n *DirNode) uplodir() (*uplodir.Uplodir, error) {
 	if *n.lazyuplodir != nil {
 		return *n.lazyuplodir, nil
 	}
@@ -751,7 +751,7 @@ func (n *DirNode) openDir(dirName string) (*DirNode, error) {
 		return nil, err
 	}
 	// Make sure the metadata exists too.
-	dirMDPath := filepath.Join(dirPath, modules.uplodirExtension)
+	dirMDPath := filepath.Join(dirPath, modules.UplodirExtension)
 	_, err = os.Stat(dirMDPath)
 	if os.IsNotExist(err) {
 		return nil, ErrNotExist
@@ -764,7 +764,7 @@ func (n *DirNode) openDir(dirName string) (*DirNode, error) {
 		node:        newNode(n, dirPath, dirName, 0, n.staticWal, n.staticLog),
 		directories: make(map[string]*DirNode),
 		files:       make(map[string]*FileNode),
-		lazyuplodir:  new(*uplodir.uplodir),
+		lazyuplodir:  new(*uplodir.Uplodir),
 	}
 	n.directories[*dir.name] = dir
 	return dir.managedCopy(), nil

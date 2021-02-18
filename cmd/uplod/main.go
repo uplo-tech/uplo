@@ -192,7 +192,7 @@ func main() {
 
 	// If globalConfig.uplod.uplodir is not set, use the environment variable provided.
 	if globalConfig.uplod.uplodir == "" {
-		globalConfig.uplod.uplodir = build.uplodDataDir()
+		globalConfig.uplod.uplodir = build.UplodDataDir()
 	}
 
 	// Parse cmdline flags, overwriting both the default values and the config
