@@ -15,7 +15,7 @@ import (
 const (
 	// SeverityUnknown is the value of an uninitialized severity and should never
 	// be used.
-	SeverityUnknown = iota
+	severityUnknown = iota
 	// SeverityWarning warns the user about potential issues which might require
 	// preventive actions.
 	SeverityWarning
@@ -96,7 +96,7 @@ func (x Alert) Equals(y Alert) bool {
 
 // EqualsWithErrorCause returns true if x and y have the same module, message,
 // and severity and if the provided error is in both of the alert's causes
-func (x Alert) EqualsWithErrorCause(y Alert, causeErr string) bool {
+func (x alert) EqualsWithErrorCause(y Alert, causeErr string) bool {
 	firstCheck := x.Module == y.Module && x.Msg == y.Msg && x.Severity == y.Severity
 	causeCheck := strings.Contains(x.Cause, causeErr) && strings.Contains(y.Cause, causeErr)
 	return firstCheck && causeCheck
