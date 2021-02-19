@@ -69,15 +69,15 @@ be valid. txn may be either JSON, base64, or a file containing either.`,
 
 Units:
 The smallest unit of Uplocoins is the hasting. One Uplocoin is 10^24 hastings. Other supported units are:
-  pS (pico,  10^-12 SC)
-  nS (nano,  10^-9 SC)
-  uS (micro, 10^-6 SC)
-  mS (milli, 10^-3 SC)
-  SC
-  KS (kilo, 10^3 SC)
-  MS (mega, 10^6 SC)
-  GS (giga, 10^9 SC)
-  TS (tera, 10^12 SC)`,
+  pS (pico,  10^-12 UC)
+  nS (nano,  10^-9 UC)
+  uS (micro, 10^-6 UC)
+  mS (milli, 10^-3 UC)
+  UC
+  KS (kilo, 10^3 UC)
+  MS (mega, 10^6 UC)
+  GS (giga, 10^9 UC)
+  TS (tera, 10^12 UC)`,
 		Run: wrap(walletbalancecmd),
 	}
 
@@ -643,7 +643,7 @@ func wallettransactionscmd() {
 		} else {
 			fmt.Printf(" unconfirmed")
 		}
-		fmt.Printf("%67v%15.2f SC", txn.TransactionID, incomingUplocoinsFloat-outgoingUplocoinsFloat)
+		fmt.Printf("%67v%15.2f UC", txn.TransactionID, incomingUplocoinsFloat-outgoingUplocoinsFloat)
 		// For uplofunds, need to avoid having a negative types.Currency.
 		if incomingUplofunds.Cmp(outgoingUplofunds) >= 0 {
 			fmt.Printf("%14v UF\n", incomingUplofunds.Sub(outgoingUplofunds))

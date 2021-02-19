@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	testFunds       = "10000000000000000000000000000" // 10k SC
+	testFunds       = "10000000000000000000000000000" // 10k UC
 	testPeriod      = "5"
 	testRenewWindow = "2"
 )

@@ -52,7 +52,7 @@ func TestRootuplocCmd(t *testing.T) {
 
 Wallet:
 (  Status: Locked|  Status:          unlocked
-  Uplocoin Balance: \d+(\.\d*|) (SC|KS|MS))
+  Uplocoin Balance: \d+(\.\d*|) (UC|KS|MS))
 
 Renter:
   Files:                   \d+

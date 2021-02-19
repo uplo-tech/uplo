@@ -232,7 +232,7 @@ func (x Currency) Uint64() (u uint64, err error) {
 
 // ParseCurrency converts a Uplocoin amount to base units.
 func ParseCurrency(amount string) (string, error) {
-	units := []string{"pS", "nS", "uS", "mS", "SC", "KS", "MS", "GS", "TS"}
+	units := []string{"pS", "nS", "uS", "mS", "UC", "KS", "MS", "GS", "TS"}
 	amount = strings.TrimSpace(amount)
 	for i, unit := range units {
 		if strings.HasSuffix(amount, unit) {

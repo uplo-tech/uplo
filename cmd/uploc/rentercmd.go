@@ -408,7 +408,7 @@ func rentercmd() {
 	fmt.Println()
 	fmt.Printf(`Allowance:`)
 	if rg.Settings.Allowance.Funds.IsZero() {
-		fmt.Printf("      0 SC (No current allowance)\n")
+		fmt.Printf("      0 UC (No current allowance)\n")
 	} else {
 		fm := rg.FinancialMetrics
 		totalSpent := fm.ContractFees.Add(fm.UploadSpending).
@@ -931,7 +931,7 @@ The command 'uploc renter allowance' can be used to see a breakdown of spending.
 The following units can be used to set the allowance:
 
     H  (10^24 H per Uplocoin)
-    SC (1 Uplocoin per SC)
+    UC (1 Uplocoin per UC)
     KS (1000 Uplocoins per KS)`)
 	fmt.Println()
 	fmt.Println("Current value:", currencyUnits(allowance.Funds))

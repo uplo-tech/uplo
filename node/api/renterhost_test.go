@@ -51,7 +51,7 @@ func TestHostObligationAcceptingContracts(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowanceValues := url.Values{}
-	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k SC
+	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k UC
 	allowanceValues.Set("hosts", "1")
 	allowanceValues.Set("period", "10")
 	allowanceValues.Set("renewwindow", "5")
@@ -195,7 +195,7 @@ func TestHostAndRentVanilla(t *testing.T) {
 
 	// Set an allowance for the renter, allowing a contract to be formed.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "20"
 	renewWindow := "10"
 	testPeriodInt := 20
@@ -477,7 +477,7 @@ func TestHostAndRentMultiHost(t *testing.T) {
 
 	// Set an allowance with three hosts.
 	allowanceValues := url.Values{}
-	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k SC
+	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k UC
 	allowanceValues.Set("hosts", "3")
 	allowanceValues.Set("period", "10")
 	allowanceValues.Set("renewwindow", "2")
@@ -601,7 +601,7 @@ func TestHostAndRentManyFiles(t *testing.T) {
 
 	// Set an allowance with four hosts.
 	allowanceValues := url.Values{}
-	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k SC
+	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k UC
 	allowanceValues.Set("hosts", "4")
 	allowanceValues.Set("period", "5")
 	allowanceValues.Set("renewwindow", "2")
@@ -786,7 +786,7 @@ func TestRenterUploadDownload(t *testing.T) {
 
 	// Set an allowance for the renter, allowing a contract to be formed.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
@@ -936,7 +936,7 @@ func TestRenterParallelDelete(t *testing.T) {
 
 	// Set an allowance for the renter, allowing a contract to be formed.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
@@ -1073,7 +1073,7 @@ func TestRenterRenew(t *testing.T) {
 
 	// Set an allowance for the renter, allowing a contract to be formed.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := 20
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", strconv.Itoa(testPeriod))
@@ -1214,7 +1214,7 @@ func TestRenterAllowance(t *testing.T) {
 
 	// Set an allowance for the renter, allowing a contract to be formed.
 	allowanceValues := url.Values{}
-	testFunds := types.UplocoinPrecision.Mul64(10000) // 10k SC
+	testFunds := types.UplocoinPrecision.Mul64(10000) // 10k UC
 	testPeriod := 20
 	allowanceValues.Set("funds", testFunds.String())
 	allowanceValues.Set("period", strconv.Itoa(testPeriod))
@@ -1331,7 +1331,7 @@ func TestHostAndRentReload(t *testing.T) {
 
 	// Set an allowance for the renter, allowing a contract to be formed.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
@@ -1530,7 +1530,7 @@ func TestHostAndRenterRenewInterrupt(t *testing.T) {
 
 	// Upload a file to the host.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	testPeriodInt := 10
 	allowanceValues.Set("funds", testFunds)
@@ -1665,7 +1665,7 @@ func TestUploadedBytesReporting(t *testing.T) {
 
 	// Set an allowance with two hosts.
 	allowanceValues := url.Values{}
-	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k SC
+	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k UC
 	allowanceValues.Set("hosts", "2")
 	allowanceValues.Set("period", "10")
 	allowanceValues.Set("renewwindow", "5")
@@ -1824,7 +1824,7 @@ func TestRepairLoopBlocking(t *testing.T) {
 
 	// Set an allowance with two hosts.
 	allowanceValues := url.Values{}
-	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k SC
+	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k UC
 	allowanceValues.Set("hosts", "2")
 	allowanceValues.Set("period", "10")
 	err = st.stdPostAPI("/renter", allowanceValues)
@@ -2072,7 +2072,7 @@ func TestRemoteFileRepairMassive(t *testing.T) {
 
 	// Set an allowance with two hosts.
 	allowanceValues := url.Values{}
-	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k SC
+	allowanceValues.Set("funds", "50000000000000000000000000000") // 50k UC
 	allowanceValues.Set("hosts", "2")
 	allowanceValues.Set("period", "10")
 	err = st.stdPostAPI("/renter", allowanceValues)

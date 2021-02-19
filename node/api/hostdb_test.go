@@ -512,7 +512,7 @@ func TestHostDBAndRenterDownloadDynamicIPs(t *testing.T) {
 
 	// Upload a file to the host.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	testPeriodInt := 10
 	allowanceValues.Set("funds", testFunds)
@@ -738,7 +738,7 @@ func TestHostDBAndRenterUploadDynamicIPs(t *testing.T) {
 
 	// Upload a file to the host.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	testPeriodInt := 10
 	allowanceValues.Set("funds", testFunds)
@@ -1059,7 +1059,7 @@ func TestHostDBAndRenterFormDynamicIPs(t *testing.T) {
 
 	// Upload a file to the host.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	testPeriodInt := 10
 	allowanceValues.Set("funds", testFunds)
@@ -1197,7 +1197,7 @@ func TestHostDBAndRenterRenewDynamicIPs(t *testing.T) {
 
 	// Upload a file to the host.
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "10"
 	testPeriodInt := 10
 	allowanceValues.Set("funds", testFunds)

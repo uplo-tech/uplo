@@ -710,7 +710,7 @@ func TestCurrencyUnits(t *testing.T) {
 		{NewCurrency64(1000000000000000), "1 nS"},
 		{NewCurrency64(1000000000000000000), "1 uS"},
 		{NewCurrency64(1000000000).Mul64(1000000000000), "1 mS"},
-		{NewCurrency64(1).Mul(UplocoinPrecision), "1 SC"},
+		{NewCurrency64(1).Mul(UplocoinPrecision), "1 UC"},
 		{NewCurrency64(1000).Mul(UplocoinPrecision), "1 KS"},
 		{NewCurrency64(1000000).Mul(UplocoinPrecision), "1 MS"},
 		{NewCurrency64(1000000000).Mul(UplocoinPrecision), "1 GS"},

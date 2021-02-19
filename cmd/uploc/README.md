@@ -97,7 +97,7 @@ Example:
 user@hostname:~$ uploc host -v
 Host settings:
 Storage:      2.0000 TB (1.524 GB used)
-Price:        0.000 SC per GB per month
+Price:        0.000 UC per GB per month
 Collateral:   0
 Max Filesize: 10000000000
 Max Duration: 8640
@@ -116,17 +116,17 @@ In version `1.4.3.0`, uplo hosting is configured as follows:
 | Setting                    | Value                                           |
 | ---------------------------|-------------------------------------------------|
 | acceptingcontracts         | Yes or No                                       |
-| collateral                 | in SC / TB / Month, 10-1000                     |
-| collateralbudget           | in SC                                           |
+| collateral                 | in UC / TB / Month, 10-1000                     |
+| collateralbudget           | in UC                                           |
 | ephemeralaccountexpiry     | in seconds                                      |
-| maxcollateral              | in SC, max per contract                         |
+| maxcollateral              | in UC, max per contract                         |
 | maxduration                | in weeks, at least 12                           |
-| maxephemeralaccountbalance | in SC                                           |
-| maxephemeralaccountrisk    | in SC                                           |
-| mincontractprice           | minimum price in SC per contract                |
-| mindownloadbandwidthprice  | in SC / TB                                      |
-| minstorageprice            | in SC / TB                                      |
-| minuploadbandwidthprice    | in SC / TB                                      |
+| maxephemeralaccountbalance | in UC                                           |
+| maxephemeralaccountrisk    | in UC                                           |
+| mincontractprice           | minimum price in UC per contract                |
+| mindownloadbandwidthprice  | in UC / TB                                      |
+| minstorageprice            | in UC / TB                                      |
+| minuploadbandwidthprice    | in UC / TB                                      |
 
 You can call this many times to configure you host before announcing.
 Alternatively, you can manually adjust these parameters inside the
@@ -297,8 +297,8 @@ Example:
 user@hostname:~$ uploc wallet balance
 Wallet status:
 Encrypted, Unlocked
-Confirmed Balance:   61516458.00 SC
-Unconfirmed Balance: 64516461.00 SC
+Confirmed Balance:   61516458.00 UC
+Unconfirmed Balance: 64516461.00 UC
 Exact:               61516457999999999999999999999999 H
 ```
 
@@ -464,7 +464,7 @@ Error log example with 5 above items (part `...` of the message is cut):
             
             Wallet XXX:
             (  Status: Locked|  Status:          unlocked
-              Uplocoin Balance: [\d]+(\.[\d]*|) (SC|KS|MS))
+              Uplocoin Balance: [\d]+(\.[\d]*|) (UC|KS|MS))
             ...
             $
         helpers_test.go:153: ----- Actual Cobra output: -----

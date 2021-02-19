@@ -467,9 +467,9 @@ func TestIntegrationWalletSweepSeedPOST(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Should have swept more than 80 SC
+	// Should have swept more than 80 UC
 	if wsp.Coins.Cmp(types.UplocoinPrecision.Mul64(80)) <= 0 {
-		t.Fatalf("swept fewer coins (%v SC) than expected %v+", wsp.Coins.Div(types.UplocoinPrecision), 80)
+		t.Fatalf("swept fewer coins (%v UC) than expected %v+", wsp.Coins.Div(types.UplocoinPrecision), 80)
 	}
 
 	// Add a block so that the sweep transaction is processed
@@ -1212,7 +1212,7 @@ func TestWalletUplofunds(t *testing.T) {
 
 	// form allowance
 	allowanceValues := url.Values{}
-	testFunds := "10000000000000000000000000000" // 10k SC
+	testFunds := "10000000000000000000000000000" // 10k UC
 	testPeriod := "20"
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
@@ -1704,7 +1704,7 @@ func TestWalletManyTransactions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Send SC to each address.
+	// Send UC to each address.
 	minedBlocks := 0
 	for i, uc := range ucs {
 		st.wallet.SendUplocoins(types.UplocoinPrecision, uc.UnlockHash())
