@@ -479,7 +479,7 @@ Height:              %v
 Confirmed Balance:   %v
 Unconfirmed Delta:   %v
 Exact:               %v H
-Uplofunds:            %v SF
+Uplofunds:            %v UF
 Uplofund Claims:      %v H
 
 Estimated Fee:       %v / KB
@@ -512,7 +512,7 @@ func walletsweepcmd() {
 	if err != nil {
 		die("Could not sweep seed:", err)
 	}
-	fmt.Printf("Swept %v and %v SF from seed.\n", currencyUnits(swept.Coins), swept.Funds)
+	fmt.Printf("Swept %v and %v UF from seed.\n", currencyUnits(swept.Coins), swept.Funds)
 }
 
 // walletsigncmd signs a transaction.
@@ -646,9 +646,9 @@ func wallettransactionscmd() {
 		fmt.Printf("%67v%15.2f SC", txn.TransactionID, incomingUplocoinsFloat-outgoingUplocoinsFloat)
 		// For uplofunds, need to avoid having a negative types.Currency.
 		if incomingUplofunds.Cmp(outgoingUplofunds) >= 0 {
-			fmt.Printf("%14v SF\n", incomingUplofunds.Sub(outgoingUplofunds))
+			fmt.Printf("%14v UF\n", incomingUplofunds.Sub(outgoingUplofunds))
 		} else {
-			fmt.Printf("-%14v SF\n", outgoingUplofunds.Sub(incomingUplofunds))
+			fmt.Printf("-%14v UF\n", outgoingUplofunds.Sub(incomingUplofunds))
 		}
 	}
 }

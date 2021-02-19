@@ -134,7 +134,7 @@ func TestSignTransactionNoWallet(t *testing.T) {
 	// whether SignTransaction can find it.
 	sk := generateSpendableKey(seed, fastrand.Uint64n(1000))
 
-	// create a transaction that sends 1 UPLOand 1 SF to the void
+	// create a transaction that sends 1 UPLOand 1 UF to the void
 	txn := types.Transaction{
 		UplocoinInputs: []types.UplocoinInput{{
 			ParentID:         types.UplocoinOutputID{1}, // doesn't need to actually exist
