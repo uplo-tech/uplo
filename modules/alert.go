@@ -15,7 +15,7 @@ import (
 const (
 	// SeverityUnknown is the value of an uninitialized severity and should never
 	// be used.
-	severityUnknown = iota
+	SeverityUnknown = iota
 	// SeverityWarning warns the user about potential issues which might require
 	// preventive actions.
 	SeverityWarning
