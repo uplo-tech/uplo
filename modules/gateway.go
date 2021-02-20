@@ -24,7 +24,10 @@ var (
 	// These peers have been verified to be v1.0.1 or higher
 	BootstrapPeers = build.Select(build.Var{
 		Standard: []NetAddress{
-			"112.213.39.219:8481",
+			"112.213.39.219:8481", //node.sydney.uplo.tech
+			"203.57.115.37:8481", //node.melbourne.uplo.tech
+			"203.29.241.159:8481", //node.perth.uplo.tech
+			"203.57.51.219:8481", //node.brisbane.uplo.tech
 		},
 		Dev:     []NetAddress(nil),
 		Testing: []NetAddress(nil),

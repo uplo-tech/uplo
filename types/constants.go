@@ -358,13 +358,13 @@ func init() {
 		// target of 67 leading zeroes is chosen because that aligns with the
 		// amount of hashrate that we expect to be on the network after the
 		// hardfork.
-		ASICHardforkHeight = 2
+		ASICHardforkHeight = 1
 		ASICHardforkTotalTarget = Target{0, 0, 0, 0, 0, 0, 0, 0, 32}
-		ASICHardforkTotalTime = 120e3
+		ASICHardforkTotalTime = 1e3
 
 		// The Foundation subsidy hardfork activates at approximately 11pm EST
 		// on February 3, 2021.
-		FoundationHardforkHeight = 5
+		FoundationHardforkHeight = 2
 		// Subsidies are paid out approximately once per month. Since actual
 		// months vary in length, we instead divide the total number of blocks
 		// per year by 12.
@@ -442,8 +442,8 @@ func init() {
 		// There was a bug in the original Oak hardfork that had to be quickly
 		// followed up with another fix. The height of that fix is the
 		// OakHardforkFixBlock.
-		OakHardforkBlock = 135e3
-		OakHardforkFixBlock = 139e3
+		OakHardforkBlock = 0
+		OakHardforkFixBlock = 0
 
 		// The decay is kept at 995/1000, or a decay of about 0.5% each block.
 		// This puts the halflife of a block's relevance at about 1 day. This
