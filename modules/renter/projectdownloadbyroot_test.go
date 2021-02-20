@@ -62,7 +62,7 @@ func TestPDBRGouging(t *testing.T) {
 	// just over the allowed limit.
 	//
 	// Cost breakdown:
-	// - cost per PDBR 266.4 mS
+	// - cost per PDBR 266.4 mU
 	// - total cost to fulfil expected download 4.365 KS
 	// - reduced cost after applying downloadGougingFractionDenom: 1.091 KS
 	// - exceeding the allowance of 1 KS, which is what we are after

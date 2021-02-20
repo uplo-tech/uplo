@@ -78,8 +78,8 @@ integer.
 The second currency in the Uplo cryptosystem is the Uplofund, which is a special
 asset limited to 10,000 indivisible units. Each time a file contract payout is
 made, 3.9% of the payout is put into the uplofund pool. The number of Uplocoins
-in the uplofund pool must always be divisible by 10,000; the number of coins
-taken from the payout is rounded down to the nearest 10,000. The uplofund is
+in the uplofund pool must always be divisible by 100,000; the number of coins
+taken from the payout is rounded down to the nearest 100,000. The uplofund is
 also represented by an infinite precision unsigned integer.
 
 Uplofund owners can collect the Uplocoins in the uplofund pool. For every 10,000

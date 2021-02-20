@@ -202,10 +202,10 @@ func currencyUnits(c types.Currency) string {
 	// iterate until we find a unit greater than c
 	mag := pico
 	unit := ""
-	for _, unit = range []string{"pS", "nS", "uS", "mS", "UC", "KS", "MS", "GS", "TS"} {
+	for _, unit = range []string{"pU", "nU", "uU", "mU", "UC", "KU", "MU", "GU", "TU"} {
 		if c.Cmp(mag.Mul64(1e3)) < 0 {
 			break
-		} else if unit != "TS" {
+		} else if unit != "TU" {
 			// don't want to perform this multiply on the last iter; that
 			// would give us 1.235 TS instead of 1235 TS
 			mag = mag.Mul64(1e3)
