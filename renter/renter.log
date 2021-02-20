@@ -1,3 +1,0 @@
-2021/02/18 19:49:52.848508 log.go:29: STARTUP: Logging has started. Uplo Version 1.0.1
-2021/02/18 19:49:52.880984 repair.go:626: Calling bubble on the subtree 
-2021/02/18 19:49:52.887980 repair.go:599: Health loop sleeping for 59m59.9890059s, lastHealthCheckTime 2021-02-19 03:49:52.8769861 +0800 CST, directory 

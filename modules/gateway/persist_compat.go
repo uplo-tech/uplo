@@ -16,14 +16,14 @@ const (
 // node persist file.
 var nodePersistMetadata = persist.Metadata{
 	Header:  "Uplo Node List",
-	Version: "1.3.0",
+	Version: "1.0.1",
 }
 
 // persistMetadatav135 contains the header and version strings that identify the
 // gateway persist file for v135 nodes.
 var persistMetadatav135 = persist.Metadata{
 	Header:  "Gateway Persistence",
-	Version: "1.3.5",
+	Version: "1.0.1",
 }
 
 type (
