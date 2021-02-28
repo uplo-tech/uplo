@@ -370,12 +370,8 @@ func init() {
 		// per year by 12.
 		FoundationSubsidyFrequency = BlocksPerYear / 12
 
-		//InitialFoundationUnlockHash = MustParseAddress("053b2def3cbdd078c19d62ce2b4f0b1a3c5e0ffbeeff01280efb1f8969b2f5bb4fdc680f0807")
-		//InitialFoundationFailsafeUnlockHash = MustParseAddress("27c22a6c6e6645802a3b8fa0e5374657438ef12716d2205d3e866272de1b644dbabd53d6d560")
-		initialFoundationUnlockConditions, _ := GenerateDeterministicMultisig(2, 3, InitialFoundationTestingSalt)
-		initialFoundationFailsafeUnlockConditions, _ := GenerateDeterministicMultisig(3, 5, InitialFoundationFailsafeTestingSalt)
-		InitialFoundationUnlockHash = initialFoundationUnlockConditions.UnlockHash()
-		InitialFoundationFailsafeUnlockHash = initialFoundationFailsafeUnlockConditions.UnlockHash()
+		InitialFoundationUnlockHash = MustParseAddress("12202e08339da0e5071262d2edd478ca7bc44ac55cfae03788723eeae4481af8180d4aa1c1ad")
+		InitialFoundationFailsafeUnlockHash = MustParseAddress("27c22a6c6e6645802a3b8fa0e5374657438ef12716d2205d3e866272de1b644dbabd53d6d560")
 
 
 		// A block time of 1 block per 10 minutes is chosen to follow Bitcoin's
